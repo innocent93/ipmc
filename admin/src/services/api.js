@@ -1,5 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
+const API_BASE_URL = 'https://ipmc.onrender.com/api'
 // Catches the single most common deploy mistake early, with a clear
 // message instead of a cryptic "Unexpected response (status 405)":
 // VITE_API_URL is a Vite build-time variable — if it's left unset, or
