@@ -4,6 +4,7 @@ import { ArrowLeft, Clock, Calendar, Loader2, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '../utils/api';
 import { getFallbackPost, getFallbackRelated } from '../data/blogPosts';
+import { optimizeImage } from '../utils/imageOptimize';
 
 export default function BlogPost() {
   const { slug } = useParams();
@@ -50,7 +51,7 @@ export default function BlogPost() {
         <div className="h-full bg-accent-500 transition-[width] duration-150" style={{ width: `${readProgress}%` }} />
       </div>
       <section className="relative py-20 bg-primary-950">
-        <div className="absolute inset-0 bg-cover bg-center opacity-20" style={{ backgroundImage: `url(${post.coverImage})` }} />
+        <div className="absolute inset-0 bg-cover bg-center opacity-20" style={{ backgroundImage: `url(${optimizeImage(post.coverImage, { width: 1600 })})` }} />
         <div className="container-custom relative">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl">
             <Link to="/blog" className="inline-flex items-center gap-2 text-primary-300 hover:text-white transition-colors mb-6"><ArrowLeft size={18} /> Back to Blog</Link>

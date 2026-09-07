@@ -22,6 +22,8 @@ const otherLinks = [
   }),
   { name: 'ESG Questionnaire', path: '/esg/questionnaire' },
   { name: 'ESG Advisory Service', path: '/esg/advisory' },
+  { name: 'Compare Services', path: '/compare' },
+  { name: 'Newsletter Archive', path: '/newsletter' },
 ];
 
 export default function Footer() {

@@ -82,6 +82,18 @@ export const api = {
 
   // Settings (public)
   getPublicSettings: () => apiFetch(`${API_BASE_URL}/settings/public`).then(r => r.data),
+
+  // Events + RSVP
+  getEvents: (params = '') => apiFetch(`${API_BASE_URL}/events${params}`).then(r => r.data),
+  getEvent: (slug) => apiFetch(`${API_BASE_URL}/events/${slug}`).then(r => r.data),
+  rsvpToEvent: (slug, data) => apiFetch(`${API_BASE_URL}/events/${slug}/rsvp`, { method: 'POST', body: JSON.stringify(data) }),
+
+  // Job applications
+  applyToJob: (jobId, data) => apiFetch(`${API_BASE_URL}/jobs/${jobId}/apply`, { method: 'POST', body: JSON.stringify(data) }),
+
+  // Newsletter archive
+  getNewsletterArchive: (params = '') => apiFetch(`${API_BASE_URL}/newsletter/archive${params}`).then(r => r.data),
+  getNewsletterIssue: (slug) => apiFetch(`${API_BASE_URL}/newsletter/archive/${slug}`).then(r => r.data),
 };
 
 export default api;

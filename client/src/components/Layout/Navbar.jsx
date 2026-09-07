@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, ChevronDown, Search, Phone, Mail, MapPin } from 'lucide-react';
+import { Menu, X, ChevronDown, Search, Phone, Mail, MapPin, Sun, Moon } from 'lucide-react';
 import { SERVICES, SERVICE_CATEGORIES } from '../../data/services';
+import { useTheme } from '../../context/ThemeContext';
 
 // Mirrors the capability categories on ipmc-ng.com (Engineering, Advisory,
 // Data Management, Manpower, QHSE, ESG, Asset Integrity) so the refactor's
@@ -58,6 +59,7 @@ export default function Navbar() {
   // "Solid" forces the scrolled (dark-text, opaque background) styling
   // immediately on any non-home route, rather than waiting for scroll.
   const solid = isScrolled || location.pathname !== '/';
+  const { isDark, toggleTheme } = useTheme();
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
@@ -238,6 +240,17 @@ export default function Navbar() {
                 }`}
               >
                 <Search size={20} />
+              </button>
+
+              {/* Dark mode toggle */}
+              <button
+                onClick={toggleTheme}
+                aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
+                  solid ? 'text-gray-700 hover:bg-gray-100' : 'text-white hover:bg-white/10'
+                }`}
+              >
+                {isDark ? <Sun size={20} /> : <Moon size={20} />}
               </button>
 
               {/* CTA */}

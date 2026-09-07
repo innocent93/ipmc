@@ -9,6 +9,9 @@ import BlogManager from './pages/BlogManager';
 import ServiceManager from './pages/ServiceManager';
 import TeamManager from './pages/TeamManager';
 import Messages from './pages/Messages';
+import EventManager from './pages/EventManager';
+import JobApplicationsManager from './pages/JobApplicationsManager';
+import NewsletterManager from './pages/NewsletterManager';
 import Settings from './pages/Settings';
 import Sessions from './pages/Sessions';
 import Toast from './components/UI/Toast';
@@ -31,6 +34,9 @@ function AdminRoutes() {
         <Route path="/services" element={<ServiceManager addToast={addToast} />} />
         <Route path="/team" element={<TeamManager addToast={addToast} />} />
         <Route path="/messages" element={<Messages addToast={addToast} />} />
+        <Route path="/events" element={<EventManager addToast={addToast} />} />
+        <Route path="/applications" element={<JobApplicationsManager addToast={addToast} />} />
+        <Route path="/newsletter-issues" element={<NewsletterManager addToast={addToast} />} />
         <Route path="/settings" element={<Settings addToast={addToast} />} />
         <Route path="/sessions" element={<Sessions addToast={addToast} />} />
       </Routes>

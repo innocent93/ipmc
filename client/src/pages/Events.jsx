@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Calendar, MapPin, Clock, ArrowRight, Users } from 'lucide-react';
+import { api } from '../utils/api';
+import EventRsvpModal from '../components/UI/EventRsvpModal';
 
 const events = [
   {
@@ -36,11 +38,19 @@ const events = [
 const categories = ['All', 'Conference', 'Workshop', 'Seminar', 'Training'];
 
 export default function Events() {
+  const [eventsData, setEventsData] = useState(events);
   const [activeCategory, setActiveCategory] = useState('All');
+  const [rsvpEvent, setRsvpEvent] = useState(null);
+
+  useEffect(() => {
+    api.getEvents()
+      .then((data) => setEventsData(data && data.length > 0 ? data : events))
+      .catch(() => setEventsData(events));
+  }, []);
 
   const filteredEvents = activeCategory === 'All' 
-    ? events 
-    : events.filter(e => e.type === activeCategory);
+    ? eventsData 
+    : eventsData.filter(e => e.type === activeCategory);
 
   const upcomingEvents = filteredEvents.filter(e => e.status === 'upcoming');
   const pastEvents = filteredEvents.filter(e => e.status === 'past');
@@ -128,7 +138,7 @@ export default function Events() {
                         {event.attendees} expected attendees
                       </div>
                     </div>
-                    <button className="inline-flex items-center gap-2 text-primary-600 font-semibold hover:gap-3 transition-all">
+                    <button onClick={() => setRsvpEvent(event)} className="inline-flex items-center gap-2 text-primary-600 font-semibold hover:gap-3 transition-all">
                       Register Now <ArrowRight size={16} />
                     </button>
                   </div>
@@ -172,6 +182,8 @@ export default function Events() {
           </div>
         </section>
       )}
+
+      {rsvpEvent && <EventRsvpModal event={rsvpEvent} onClose={() => setRsvpEvent(null)} />}
     </div>
   );
 }

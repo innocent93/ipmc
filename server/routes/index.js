@@ -8,6 +8,7 @@ router.use('/auth', require('./auth'));
 router.use('/blog', require('./blog'));
 router.use('/contact', require('./contact'));
 router.use('/esg', require('./esg'));
+router.use('/events', require('./events'));
 router.use('/jobs', require('./jobs'));
 router.use('/newsletter', require('./newsletter'));
 router.use('/partners', require('./partners'));

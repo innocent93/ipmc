@@ -145,3 +145,42 @@
     text-shadow: none !important;
   }
 }
+
+/* Dark mode: applied globally via .dark on <html> (see
+   context/ThemeContext.jsx), overriding the common light-mode utility
+   classes at the class level rather than adding dark: variants to every
+   individual element across 60+ components. This is a pragmatic
+   site-wide approach — it covers the vast majority of surfaces
+   (backgrounds, text, borders, cards) in one pass; a few highly custom
+   inline-styled sections (e.g. hero gradients) are already dark by
+   design and unaffected either way. */
+.dark body { background-color: #0b1220; }
+.dark .bg-white { background-color: #0f172a !important; }
+.dark .bg-gray-50 { background-color: #0b1220 !important; }
+.dark .bg-gray-100 { background-color: #111827 !important; }
+.dark .bg-primary-50 { background-color: #0f1d3d !important; }
+
+.dark .text-gray-900 { color: #f1f5f9 !important; }
+.dark .text-gray-800 { color: #e2e8f0 !important; }
+.dark .text-gray-700 { color: #cbd5e1 !important; }
+.dark .text-gray-600 { color: #94a3b8 !important; }
+.dark .text-gray-500 { color: #64748b !important; }
+.dark .text-primary-900 { color: #f1f5f9 !important; }
+
+.dark .border-gray-100 { border-color: #1e293b !important; }
+.dark .border-gray-200 { border-color: #1e293b !important; }
+.dark .border-gray-300 { border-color: #334155 !important; }
+
+.dark .shadow-sm, .dark .shadow-md, .dark .shadow-lg, .dark .shadow-xl {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
+}
+
+/* Form inputs need explicit handling — browsers don't auto-invert them */
+.dark input, .dark textarea, .dark select {
+  background-color: #1e293b !important;
+  color: #f1f5f9 !important;
+  border-color: #334155 !important;
+}
+.dark input::placeholder, .dark textarea::placeholder { color: #64748b !important; }
+
+.dark ::selection { background-color: #2451c4; color: #fff; }

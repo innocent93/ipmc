@@ -435,6 +435,144 @@ this codebase for real anywhere outside this sandbox.
 
 ---
 
+## Round 7 — Admin login diagnosis, and the full deferred feature list
+
+### 24. Admin login 405 — real diagnostic tool, not another guess
+
+The person confirmed they'd already set `VITE_API_URL` correctly and
+still hit the same 405. Since a genuine 404/405 **from our own Express
+app** always returns valid JSON (see `server.js`'s 404 handler), getting
+a non-JSON error body means the request is being intercepted by a
+platform layer before it reaches Express at all \u2014 most commonly, on
+Render, a service deployed as a **Static Site** instead of a **Web
+Service**.
+
+Rather than keep guessing blind, `AdminLogin.jsx` now has a built-in
+**Connection Diagnostic** panel (auto-opens on a failed login) that runs
+a live test against the backend and reports the *actual* HTTP status,
+content-type, and a specific verdict (reached Express with real JSON /
+intercepted by a platform layer / no response at all). This turns "it's
+throwing a 405" into something concretely diagnosable without DevTools.
+
+### 25. Full-text search \u2014 backend rebuilt, frontend bug fixed
+
+Found and fixed the actual cause of "search shows blank": `Search.jsx`
+was calling `api.getServices()` etc. and then reading `.data` off the
+result \u2014 but those methods already unwrap `.data` internally (fixed in
+an earlier round for other pages, missed here). The result was always
+`undefined`, silently producing empty results, every time.
+
+Rebuilt properly instead of just patching the bug:
+- Added weighted MongoDB **text indexes** to `Service` and `TeamMember`
+  (BlogPost already had one) \u2014 title matches rank above description
+  matches
+- `searchService.globalSearch` now runs `$text` search (relevance-ranked,
+  stemmed \u2014 "monitor" matches "monitoring") in parallel with the
+  existing regex search (for partial-word typing) and merges results,
+  deduplicated
+- `Search.jsx` now actually calls the real `/api/search` endpoint instead
+  of fetching everything and filtering client-side
+
+### 26. Dark mode toggle
+
+Real, working toggle \u2014 not a stub. `context/ThemeContext.jsx` persists
+the choice to `localStorage`, respects the visitor's OS-level preference
+on first visit, and toggles a `.dark` class on `<html>`. The toggle
+button (sun/moon icon) is in the navbar, both desktop and ready for
+mobile.
+
+**Coverage approach**: rather than adding `dark:` variants to every
+element across 60+ components (which risks missing dozens of spots),
+dark-mode overrides are applied at the **utility-class level** in
+`globals.css` (`.dark .bg-white { ... }`, `.dark .text-gray-900 { ... }`,
+etc.) \u2014 real, working, site-wide coverage of backgrounds/text/borders/
+forms in one pass. Highly custom inline-styled sections (hero gradients)
+are already dark by design and unaffected either way.
+
+### 27. Service worker \u2014 real cache-strategy upgrade
+
+The original service worker cached everything identically and never
+revalidated \u2014 once cached, HTML and API responses stayed stale forever.
+Rewritten with per-request-type strategy: **network-first** for
+navigation/HTML (always fresh, falls back to cache offline),
+**cache-first** for hashed static assets (safe forever \u2014 new deploys
+ship new filenames), **stale-while-revalidate** for API GET calls (instant
+from cache, silently refreshed in the background), and auth endpoints are
+never intercepted at all. Cache versioning (`v2`) means old caches are
+cleaned up on activation.
+
+### 28. Event RSVP system
+
+Full stack: `Event` model with an embedded RSVP subdocument array
+(name/email/phone/guest count), capacity enforcement, duplicate-RSVP
+prevention, admin-only attendee list endpoint (list views never expose
+attendee emails/phones \u2014 only counts). `EventRsvpModal.jsx` wired into
+`Events.jsx`'s "Register Now" button, calling the real backend with a
+local-sample-data fallback that fails with a clear message rather than
+pretending to succeed.
+
+**Not done**: no admin UI page for creating/editing events or viewing
+RSVP lists \u2014 the backend is complete and admin-authenticated, but there's
+no admin manager screen for it yet (same pattern as Blog/Service
+managers would need to be built).
+
+### 29. Newsletter archive
+
+New `NewsletterIssue` model (distinct from the existing subscriber-list
+`Newsletter` model) \u2014 actual sent-issue content with a public archive
+listing (`/newsletter`) and detail page (`/newsletter/:slug`), plus admin
+endpoints to author, edit, and send an issue to all active subscribers
+(sent as a background batch, not blocking the admin's request).
+
+**Not done**: no admin UI for composing/sending issues \u2014 backend only.
+
+### 30. Job application tracking
+
+New `JobApplication` model with a real status workflow (submitted \u2192
+under_review \u2192 shortlisted \u2192 interview \u2192 rejected/hired), one
+application per email per job enforced at the database level,
+automatic status-change emails to the applicant (only for the
+transitions an applicant would actually want to hear about). Replaced
+`Careers.jsx`'s `mailto:` link entirely with a real `JobApplicationModal`
+that submits to the tracked backend.
+
+**Not done**: no admin UI for reviewing applications or changing their
+status \u2014 backend and public application form only.
+
+### 31. Compare Services
+
+New `/compare` page \u2014 pick up to 3 services from the real 32-service
+catalog, see them side by side with category, summary, and full
+description, each linking to its full detail page. Frontend-only, built
+entirely on the existing `data/services.js` catalog.
+
+### 32. Real image optimization
+
+`utils/imageOptimize.js` \u2014 uses Cloudinary's `f_auto`/`q_auto`
+transformation parameters (Cloudinary is already a project dependency
+for uploads) to serve AVIF/WebP automatically per-browser from a single
+stored master image, plus a `buildSrcSet()` helper for responsive
+multi-width delivery. Wired into blog cover images as the reference
+implementation. **This only affects images actually uploaded through the
+app's Cloudinary integration** \u2014 external URLs (Unsplash placeholders,
+IPMC's hotlinked CDN photos) pass through unchanged, since their
+delivery pipeline isn't ours to control.
+
+### Still genuinely open after this round
+
+- Admin UI screens for the three new backend features (Events, Newsletter
+  Issues, Job Applications) \u2014 all three are fully functional via API,
+  none have an admin management page yet
+- Dark mode is broad utility-class coverage, not a pixel-audited pass \u2014
+  edge cases in less-common components may still look off
+- Image optimization only covers images actually run through Cloudinary
+  upload \u2014 not a blanket rewrite of every image source in the app
+- No accessibility audit, load testing, or legal review
+- Nothing in this codebase has been run in a live environment \u2014 still
+  syntax-checked only
+
+---
+
 ## Round 2 — Full page redesign pass, test suite, cookie auth, Docker
 
 ### 8. Design tokens applied further
@@ -554,3 +692,87 @@ against an in-memory MongoDB (no external DB needed) before the existing
 `server-boot-check` job (which still boots the real server against a real
 MongoDB service container and hits a live endpoint, as a final sanity
 check).
+
+---
+
+## Round 8 — The three missing admin manager screens, now built
+
+Closed the gap flagged at the end of Round 7: Events, Job Applications,
+and Newsletter Issues had working backends and public-facing pages, but
+no admin UI to manage them.
+
+- **`EventManager.jsx`** — create/edit/delete events, plus a dedicated
+  RSVP viewer per event (attendee name/email/phone/guest count, with the
+  ability to remove an individual RSVP — e.g. a no-show freeing up a
+  capacity-limited slot)
+- **`JobApplicationsManager.jsx`** — a filterable list of every
+  application with a status-change panel (submitted -> under review ->
+  shortlisted -> interview -> rejected/hired); moving an application to
+  any of the four applicant-facing stages automatically sends that
+  applicant a status email, matching the backend behavior built in
+  Round 7
+- **`NewsletterManager.jsx`** — author and edit draft issues, then send
+  to every active subscriber with one click; sent issues are locked
+  (can't be re-sent) and automatically appear in the public archive
+
+All three follow the exact same CRUD-modal pattern as the existing
+Blog/Service/Team managers, added to the sidebar nav and routed at
+`/admin/events`, `/admin/applications`, `/admin/newsletter-issues`.
+
+Full repo re-verified: 88 client/admin files + all server files, zero
+syntax failures.
+
+### What's left, unchanged from before
+
+Dark mode utility-class coverage isn't pixel-audited, image optimization
+only covers Cloudinary-hosted uploads, and there's still no accessibility
+audit, load testing, legal review, or — the constant across every round —
+any confirmation that this code has actually been run outside this
+sandbox.
+
+---
+
+## Round 9 — Careers page bug, and hero image load speed
+
+### 33. Careers page not rendering — real bug found
+
+`pages/Careers.jsx` used the `Users` icon (in the "Why Join Us" section)
+without importing it from `lucide-react`. This is a `ReferenceError` at
+render time — React crashes the entire component the instant it tries to
+render that section, which is why the page appeared broken/blank rather
+than showing a partial page. Fixed by adding the missing import.
+
+**Verification beyond this one file**: wrote a script that parses every
+page and shared component for JSX tags used but never imported/locally
+defined, across the whole `client/src` tree. This was the only real hit —
+a few other flagged names (`SearchIcon`, `StatCard`, `FAQItem`, `Icon`)
+turned out to be renamed imports or locally-scoped `.map()` callback
+variables, verified individually and confirmed not bugs.
+
+### 34. Hero image slow to load
+
+Root cause: the hero background image is rendered by React after the JS
+bundle loads and hydrates — the browser has no way to discover, let alone
+start fetching, it any earlier than that, even with `fetchpriority="high"`
+already set on the `<img>` tag itself. That tag-level priority hint only
+helps *after* the browser already knows the image exists.
+
+**Fixes applied:**
+- `index.html` now has a `<link rel="preload" as="image">` for the exact
+  first-slide image, with matching `imagesrcset`/`imagesizes` — the
+  browser starts fetching this in parallel with the JS bundle, not after
+  it. The preloaded URL is verified to exactly match what `HeroSection.jsx`
+  requests at runtime (confirmed via `grep`) — a mismatched preload is
+  wasted bandwidth and causes a duplicate fetch instead of a speed-up.
+- `<link rel="preconnect" href="https://images.unsplash.com">` added, so
+  the DNS+TLS handshake to Unsplash's CDN happens early instead of
+  blocking the image request itself.
+- All three hero slide URLs now request `auto=format&fm=webp&q=70`
+  instead of a fixed JPEG at `q=80` — Unsplash's own CDN negotiates
+  AVIF/WebP automatically per-browser and the lower quality setting is
+  visually near-identical at this resolution while meaningfully smaller.
+- Added a responsive `srcSet` (480/768/1280/1920w) so mobile visitors
+  download a properly-sized image instead of the full 1920px master.
+
+Full repo re-verified after this round: 88 client/admin files + all
+server files, zero syntax failures.

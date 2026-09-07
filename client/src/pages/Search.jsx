@@ -1,53 +1,47 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search as SearchIcon, ArrowRight, Loader2, FileText, Users, Briefcase, Calendar } from 'lucide-react';
+import { Search as SearchIcon, ArrowRight, Loader2, FileText, Users, Briefcase } from 'lucide-react';
 import { api } from '../utils/api';
 
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
   const [query, setQuery] = useState(initialQuery);
-  const [results, setResults] = useState({ services: [], posts: [], team: [] });
+  const [results, setResults] = useState({ services: [], blogs: [], team: [] });
   const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (initialQuery) {
-      performSearch(initialQuery);
-    }
+    if (initialQuery) performSearch(initialQuery);
   }, [initialQuery]);
 
   const performSearch = async (searchTerm) => {
-    if (!searchTerm.trim()) return;
+    const term = searchTerm.trim();
+    if (term.length < 2) {
+      setError('Enter at least 2 characters to search.');
+      return;
+    }
+    setError('');
     setLoading(true);
-
-    // Simulate search across all content
-    // In production, this would call a dedicated search API endpoint
+    setHasSearched(true);
     try {
-      const [servicesRes, postsRes, teamRes] = await Promise.all([
-        api.getServices(),
-        api.getPosts(),
-        api.getTeam(),
-      ]);
-
-      const term = searchTerm.toLowerCase();
+      // Calls the real full-text search backend (MongoDB weighted text
+      // indexes + regex fallback for partial words — see
+      // server/services/searchService.js) instead of fetching every
+      // service/post/team member and filtering client-side, which was
+      // the previous (broken) approach.
+      const data = await api.search(term, 20);
       setResults({
-        services: (servicesRes.data || []).filter(s => 
-          s.title?.toLowerCase().includes(term) || 
-          s.shortDescription?.toLowerCase().includes(term)
-        ),
-        posts: (postsRes.data || []).filter(p => 
-          p.title?.toLowerCase().includes(term) || 
-          p.excerpt?.toLowerCase().includes(term)
-        ),
-        team: (teamRes.data || []).filter(t => 
-          t.name?.toLowerCase().includes(term) || 
-          t.role?.toLowerCase().includes(term)
-        ),
+        services: data?.services || [],
+        blogs: data?.blogs || [],
+        team: data?.team || [],
       });
-    } catch (error) {
-      setResults({ services: [], posts: [], team: [] });
+    } catch (err) {
+      setError(err.message || 'Search is temporarily unavailable. Please try again.');
+      setResults({ services: [], blogs: [], team: [] });
     }
     setLoading(false);
   };
@@ -58,23 +52,23 @@ export default function SearchPage() {
     performSearch(query);
   };
 
-  const totalResults = results.services.length + results.posts.length + results.team.length;
+  const totalResults = results.services.length + results.blogs.length + results.team.length;
 
   const tabs = [
     { id: 'all', label: 'All Results', count: totalResults },
     { id: 'services', label: 'Services', count: results.services.length, icon: Briefcase },
-    { id: 'posts', label: 'Insights', count: results.posts.length, icon: FileText },
+    { id: 'blogs', label: 'Insights', count: results.blogs.length, icon: FileText },
     { id: 'team', label: 'Team', count: results.team.length, icon: Users },
   ];
 
   const getFilteredResults = () => {
     if (activeTab === 'all') return [
       ...results.services.map(r => ({ ...r, type: 'service' })),
-      ...results.posts.map(r => ({ ...r, type: 'post' })),
+      ...results.blogs.map(r => ({ ...r, type: 'post' })),
       ...results.team.map(r => ({ ...r, type: 'team' })),
     ];
     if (activeTab === 'services') return results.services.map(r => ({ ...r, type: 'service' }));
-    if (activeTab === 'posts') return results.posts.map(r => ({ ...r, type: 'post' }));
+    if (activeTab === 'blogs') return results.blogs.map(r => ({ ...r, type: 'post' }));
     if (activeTab === 'team') return results.team.map(r => ({ ...r, type: 'team' }));
     return [];
   };
@@ -82,7 +76,6 @@ export default function SearchPage() {
   return (
     <div className="pt-20 lg:pt-24 min-h-screen bg-gray-50">
       <div className="container-custom py-12">
-        {/* Search Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl mx-auto mb-12">
           <h1 className="font-display text-3xl md:text-4xl font-bold text-primary-900 mb-6 text-center">
             Search Results
@@ -95,17 +88,18 @@ export default function SearchPage() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search services, insights, team..."
               className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-100 outline-none transition-all text-lg bg-white"
+              aria-label="Search"
             />
           </form>
+          {error && <p role="alert" className="text-red-600 text-sm mt-3 text-center">{error}</p>}
         </motion.div>
 
         {loading ? (
           <div className="flex justify-center py-20">
             <Loader2 size={40} className="animate-spin text-primary-600" />
           </div>
-        ) : query && (
+        ) : hasSearched && !error && (
           <>
-            {/* Tabs */}
             <div className="flex flex-wrap gap-2 mb-8 justify-center">
               {tabs.map(tab => (
                 <button
@@ -126,11 +120,10 @@ export default function SearchPage() {
               ))}
             </div>
 
-            {/* Results */}
             <div className="space-y-4 max-w-4xl mx-auto">
               {getFilteredResults().length > 0 ? getFilteredResults().map((result, i) => (
                 <motion.div
-                  key={`${result.type}-${result._id || result.id || i}`}
+                  key={`${result.type}-${result._id || i}`}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}

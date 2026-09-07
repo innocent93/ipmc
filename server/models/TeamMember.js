@@ -19,4 +19,10 @@ const teamSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
+// Full-text search index (used by searchService.globalSearch).
+teamSchema.index(
+  { name: 'text', role: 'text', bio: 'text' },
+  { weights: { name: 5, role: 3, bio: 1 }, name: 'team_text_index' }
+);
+
 module.exports = mongoose.model('TeamMember', teamSchema);

@@ -12,7 +12,7 @@ const DEFAULT_SLIDES = [
     title: 'Financial Advisory',
     subtitle: 'Leading the Future of Project Management in Nigeria',
     description: 'IPMC is the go-to source for top-notch financial advisory services, backed by 35 years of excellence in project monitoring across the oil & gas sector.',
-    image: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=1920&q=80',
+    image: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&fm=webp&w=1920&q=70',
     cta: { text: 'Explore Our Services', link: '/services' },
     secondaryCta: { text: 'Watch Our Story', link: '#' },
   },
@@ -20,7 +20,7 @@ const DEFAULT_SLIDES = [
     title: 'IPMC ESG Launch',
     subtitle: 'Pioneering Environmental Excellence',
     description: 'See the full report and insights from our ESG launch event, and discover the ratings, rankings and consulting services behind it.',
-    image: 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=1920&q=80',
+    image: 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?auto=format&fit=crop&fm=webp&w=1920&q=70',
     cta: { text: 'Discover ESG Services', link: '/esg' },
     secondaryCta: { text: 'Read Our Reports', link: '/blog' },
   },
@@ -28,7 +28,7 @@ const DEFAULT_SLIDES = [
     title: 'Environmental Services',
     subtitle: 'Trusted Partners in Sustainable Growth',
     description: 'Research and evaluation delivered by our environmental specialists \u2014 the people behind our technology make all the difference.',
-    image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1920&q=80',
+    image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&fm=webp&w=1920&q=70',
     cta: { text: 'Our Environmental Services', link: '/services' },
     secondaryCta: { text: 'Contact Us', link: '/contact' },
   },
@@ -105,6 +105,8 @@ export default function HeroSection() {
           <div className="absolute inset-0 bg-gradient-to-br from-primary-950 via-primary-900 to-primary-800" />
           <img
             src={slide.image}
+            srcSet={[480, 768, 1280, 1920].map(w => `${slide.image.replace('w=1920', `w=${w}`)} ${w}w`).join(', ')}
+            sizes="100vw"
             alt={slide.title}
             className="absolute inset-0 w-full h-full object-cover"
             loading="eager"

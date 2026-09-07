@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowUpRight, Clock, Calendar } from 'lucide-react';
 import { SkeletonCard } from '../components/UI/Skeleton';
+import { optimizeImage } from '../utils/imageOptimize';
 import { api } from '../utils/api';
 import { FALLBACK_POSTS } from '../data/blogPosts';
 import Pagination from '../components/UI/Pagination';
@@ -65,7 +66,7 @@ export default function Blog() {
                   <Link to={`/blog/${post.slug}`} className="group block">
                     <div className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 border border-gray-100">
                       <div className="relative h-56 overflow-hidden">
-                        <img src={post.coverImage} alt={post.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                        <img src={optimizeImage(post.coverImage, { width: 600 })} alt={post.title} loading="lazy" width="600" height="338" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                         <div className="absolute top-4 left-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${categoryColors[post.category] || 'bg-gray-100 text-gray-700'}`}>
                             {post.category.replace('-', ' ').toUpperCase()}

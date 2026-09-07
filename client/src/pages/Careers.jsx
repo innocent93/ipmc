@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, MapPin, Briefcase, Clock, ChevronDown, ChevronUp, Filter, X } from 'lucide-react';
+import { Search, MapPin, Briefcase, Clock, ChevronDown, ChevronUp, Filter, X, Users } from 'lucide-react';
+import { api } from '../utils/api';
+import JobApplicationModal from '../components/UI/JobApplicationModal';
 
 const sampleJobs = [
   {
@@ -45,14 +47,24 @@ const locations = ['All', 'Lagos', 'Abuja', 'Port Harcourt'];
 const types = ['All', 'full-time', 'part-time', 'contract', 'internship'];
 
 export default function Careers() {
+  const [jobs, setJobs] = useState(sampleJobs);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDept, setSelectedDept] = useState('All');
   const [selectedLocation, setSelectedLocation] = useState('All');
   const [selectedType, setSelectedType] = useState('All');
   const [expandedJob, setExpandedJob] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [applyingTo, setApplyingTo] = useState(null);
 
-  const filteredJobs = sampleJobs.filter(job => {
+  useEffect(() => {
+    api.getJobs()
+      .then((data) => setJobs(data && data.length > 0 ? data : sampleJobs))
+      // Backend unreachable — fall back to the sample listings so the
+      // page still renders something, same pattern as blog/services.
+      .catch(() => setJobs(sampleJobs));
+  }, []);
+
+  const filteredJobs = jobs.filter(job => {
     const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          job.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesDept = selectedDept === 'All' || job.department === selectedDept;
@@ -174,7 +186,7 @@ export default function Careers() {
           <div className="space-y-4">
             {filteredJobs.map((job, i) => (
               <motion.div
-                key={job.id}
+                key={job._id || job.id}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -182,7 +194,7 @@ export default function Careers() {
                 className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 overflow-hidden"
               >
                 <button
-                  onClick={() => setExpandedJob(expandedJob === job.id ? null : job.id)}
+                  onClick={() => setExpandedJob(expandedJob === (job._id || job.id) ? null : (job._id || job.id))}
                   className="w-full p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 text-left"
                 >
                   <div className="flex-1">
@@ -196,12 +208,12 @@ export default function Careers() {
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="text-sm text-gray-400">{job.postedAt}</span>
-                    {expandedJob === job.id ? <ChevronUp size={20} className="text-primary-600" /> : <ChevronDown size={20} className="text-gray-400" />}
+                    {expandedJob === (job._id || job.id) ? <ChevronUp size={20} className="text-primary-600" /> : <ChevronDown size={20} className="text-gray-400" />}
                   </div>
                 </button>
 
                 <AnimatePresence>
-                  {expandedJob === job.id && (
+                  {expandedJob === (job._id || job.id) && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
@@ -237,9 +249,9 @@ export default function Careers() {
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-4">
-                          <a href="mailto:careers@ipmc-ng.com" className="btn-primary inline-flex justify-center">
+                          <button onClick={() => setApplyingTo(job)} className="btn-primary inline-flex justify-center">
                             Apply Now
-                          </a>
+                          </button>
                           <button onClick={() => setExpandedJob(null)} className="btn-outline inline-flex justify-center">
                             Close
                           </button>
@@ -261,6 +273,8 @@ export default function Careers() {
           </div>
         </div>
       </section>
+
+      {applyingTo && <JobApplicationModal job={applyingTo} onClose={() => setApplyingTo(null)} />}
     </div>
   );
 }

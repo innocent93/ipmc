@@ -1,4 +1,5 @@
-const API_BASE_URL = 'https://ipmc.onrender.com/api'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 // Catches the single most common deploy mistake early, with a clear
 // message instead of a cryptic "Unexpected response (status 405)":
 // VITE_API_URL is a Vite build-time variable — if it's left unset, or
@@ -45,7 +46,7 @@ const handleResponse = async (response) => {
     // A non-JSON body on a 404/405 almost always means the request never
     // reached the real backend at all — see the VITE_API_URL check above.
     const hint = (response.status === 404 || response.status === 405)
-      ? ' This usually means VITE_API_URL is misconfigured (check it points to your deployed backend, not this admin app, and that the admin was rebuilt after setting it).'
+      ? ' A non-JSON response on a 404/405 means the request never reached your Express app at all — some hosting platform layer answered instead. On Render specifically, this is almost always the service being deployed as a "Static Site" instead of a "Web Service" (check the service type in Render\u2019s dashboard). Also double-check VITE_API_URL points to the exact backend URL and that this admin app was rebuilt after setting it. Use the "Connection diagnostic" panel on the login page for a direct test.'
       : '';
     throw new ApiError(`Unexpected response from server (status ${response.status}).${hint}`, response.status);
   }
@@ -197,6 +198,35 @@ export const jobAPI = {
   create: (data) => apiFetch(`${API_BASE_URL}/jobs`, { method: 'POST', body: JSON.stringify(data) }),
   update: (id, data) => apiFetch(`${API_BASE_URL}/jobs/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id) => apiFetch(`${API_BASE_URL}/jobs/${id}`, { method: 'DELETE' }),
+};
+
+// Job applications — the status pipeline behind the Careers page's
+// application form
+export const jobApplicationAPI = {
+  getAll: (params = '') => apiFetch(`${API_BASE_URL}/jobs/applications${params}`),
+  getForJob: (jobId) => apiFetch(`${API_BASE_URL}/jobs/${jobId}/applications`),
+  updateStatus: (id, status, notes) => apiFetch(`${API_BASE_URL}/jobs/applications/${id}`, { method: 'PUT', body: JSON.stringify({ status, notes }) }),
+  delete: (id) => apiFetch(`${API_BASE_URL}/jobs/applications/${id}`, { method: 'DELETE' }),
+};
+
+// Events + RSVPs
+export const eventAPI = {
+  getAll: (params = '') => apiFetch(`${API_BASE_URL}/events${params}`),
+  create: (data) => apiFetch(`${API_BASE_URL}/events`, { method: 'POST', body: JSON.stringify(data) }),
+  update: (id, data) => apiFetch(`${API_BASE_URL}/events/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id) => apiFetch(`${API_BASE_URL}/events/${id}`, { method: 'DELETE' }),
+  getRsvps: (id) => apiFetch(`${API_BASE_URL}/events/${id}/rsvps`),
+  removeRsvp: (eventId, rsvpId) => apiFetch(`${API_BASE_URL}/events/${eventId}/rsvps/${rsvpId}`, { method: 'DELETE' }),
+};
+
+// Newsletter issues — the actual sent-content archive, distinct from
+// newsletterAPI above (which only manages the subscriber list)
+export const newsletterIssueAPI = {
+  getAll: () => apiFetch(`${API_BASE_URL}/newsletter/issues`),
+  create: (data) => apiFetch(`${API_BASE_URL}/newsletter/issues`, { method: 'POST', body: JSON.stringify(data) }),
+  update: (id, data) => apiFetch(`${API_BASE_URL}/newsletter/issues/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id) => apiFetch(`${API_BASE_URL}/newsletter/issues/${id}`, { method: 'DELETE' }),
+  send: (id) => apiFetch(`${API_BASE_URL}/newsletter/issues/${id}/send`, { method: 'POST' }),
 };
 
 // Analytics

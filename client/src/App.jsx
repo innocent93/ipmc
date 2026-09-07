@@ -8,6 +8,7 @@ import Breadcrumbs from './components/UI/Breadcrumbs';
 import Footer from './components/Layout/Footer';
 import ScrollToTop from './components/Layout/ScrollToTop';
 import ErrorBoundary from './components/UI/ErrorBoundary';
+import { ThemeProvider } from './context/ThemeContext';
 import PageLoader from './components/UI/PageLoader';
 import Home from './pages/Home';
 import './styles/globals.css';
@@ -30,6 +31,9 @@ const Careers = lazy(() => import('./pages/Careers'));
 const Events = lazy(() => import('./pages/Events'));
 const SearchPage = lazy(() => import('./pages/Search'));
 const Privacy = lazy(() => import('./pages/Privacy'));
+const NewsletterArchive = lazy(() => import('./pages/NewsletterArchive'));
+const NewsletterIssueDetail = lazy(() => import('./pages/NewsletterIssueDetail'));
+const CompareServices = lazy(() => import('./pages/CompareServices'));
 const Terms = lazy(() => import('./pages/Terms'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
@@ -42,6 +46,7 @@ function App() {
   }, []);
 
   return (
+    <ThemeProvider>
     <HelmetProvider>
       <ErrorBoundary>
         <Router>
@@ -50,7 +55,7 @@ function App() {
           <a href="#main-content" className="skip-link">
             Skip to main content
           </a>
-          <div className="min-h-screen bg-white text-gray-900 font-sans antialiased">
+          <div className="min-h-screen bg-white dark:bg-slate-950 text-gray-900 dark:text-gray-100 font-sans antialiased transition-colors duration-300">
             <Navbar />
             <Breadcrumbs />
             <main id="main-content">
@@ -72,6 +77,9 @@ function App() {
                   <Route path="/events" element={<Events />} />
                   <Route path="/search" element={<SearchPage />} />
                   <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/newsletter" element={<NewsletterArchive />} />
+                  <Route path="/newsletter/:slug" element={<NewsletterIssueDetail />} />
+                  <Route path="/compare" element={<CompareServices />} />
                   <Route path="/terms" element={<Terms />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
@@ -91,6 +99,7 @@ function App() {
         </Router>
       </ErrorBoundary>
     </HelmetProvider>
+    </ThemeProvider>
   );
 }
 

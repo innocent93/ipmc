@@ -13,6 +13,27 @@
          below so the webfont request resolves faster -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- The homepage hero's first slide is the page's LCP (Largest
+         Contentful Paint) element, but it's rendered by React/JS, so
+         without this the browser can't discover — let alone start
+         fetching — it until after the JS bundle loads and hydrates.
+         preconnect opens the connection to Unsplash's CDN early;
+         preload starts the actual image fetch immediately, in parallel
+         with the JS bundle, instead of after it. The URL here must
+         exactly match the one HeroSection.jsx requests at runtime
+         (same query params) or this preload is wasted and a second,
+         duplicate fetch happens instead. -->
+    <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
+    <link
+      rel="preload"
+      as="image"
+      href="https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&fm=webp&w=1920&q=70"
+      imagesrcset="https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&fm=webp&w=480&q=70 480w, https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&fm=webp&w=768&q=70 768w, https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&fm=webp&w=1280&q=70 1280w, https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&fm=webp&w=1920&q=70 1920w"
+      imagesizes="100vw"
+      fetchpriority="high"
+    />
+
     <!-- Fraunces (display/headlines only) + IBM Plex Sans (body/UI) +
          IBM Plex Mono (every stat and data figure) — see docs/DESIGN_SYSTEM.md
          for the rationale. font-display=swap avoids invisible text while

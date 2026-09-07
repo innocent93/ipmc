@@ -21,4 +21,11 @@ const serviceSchema = new mongoose.Schema({
   metaDescription: { type: String },
 }, { timestamps: true });
 
+// Full-text search index (used by searchService.globalSearch) — weighted
+// so a match in the title ranks higher than one only in the description.
+serviceSchema.index(
+  { title: 'text', shortDescription: 'text', fullDescription: 'text' },
+  { weights: { title: 5, shortDescription: 3, fullDescription: 1 }, name: 'service_text_index' }
+);
+
 module.exports = mongoose.model('Service', serviceSchema);
