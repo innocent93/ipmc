@@ -4,7 +4,6 @@ const Job = require('../models/Job');
 exports.applyToJob = async (jobId, data) => {
   const job = await Job.findById(jobId);
   if (!job || !job.isActive) throw new Error('This position is no longer accepting applications');
-  if (job.closingDate && new Date(job.closingDate) < new Date()) throw new Error('Applications for this position are closed');
 
   const existing = await JobApplication.findOne({ job: jobId, email: data.email.toLowerCase() });
   if (existing) throw new Error('You\u2019ve already applied to this position with this email address');

@@ -12,7 +12,6 @@ import Messages from './pages/Messages';
 import EventManager from './pages/EventManager';
 import JobApplicationsManager from './pages/JobApplicationsManager';
 import NewsletterManager from './pages/NewsletterManager';
-import NewsletterSubscribers from './pages/NewsletterSubscribers';
 import Settings from './pages/Settings';
 import Sessions from './pages/Sessions';
 import JobsManager from './pages/JobsManager';
@@ -44,7 +43,6 @@ function AdminRoutes() {
         <Route path="/esg" element={<ESGManager addToast={addToast} />} />
         <Route path="/applications" element={<JobApplicationsManager addToast={addToast} />} />
         <Route path="/newsletter-issues" element={<NewsletterManager addToast={addToast} />} />
-        <Route path="/newsletter-subscribers" element={<NewsletterSubscribers addToast={addToast} />} />
         <Route path="/settings" element={<Settings addToast={addToast} />} />
         <Route path="/sessions" element={<Sessions addToast={addToast} />} />
       </Routes>

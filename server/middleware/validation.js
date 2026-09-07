@@ -81,7 +81,7 @@ exports.schemas = {
   }),
   newsletter: Joi.object({
     email: Joi.string().email().required(),
-    source: Joi.string().valid('footer', 'newsletter-page', 'import', 'admin', 'other').optional(),
+    source: Joi.string().valid('footer', 'newsletter-page', 'popup', 'other').default('other'),
   }),
   partner: Joi.object({
     name: Joi.string().min(2).max(100).required(),

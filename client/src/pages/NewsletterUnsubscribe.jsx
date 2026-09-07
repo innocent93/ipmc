@@ -1,23 +1,33 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
-import { api } from '../utils/api';
+import { Link, useParams } from 'react-router-dom';
+import { CheckCircle2, Loader2, MailX } from 'lucide-react';
 
 export default function NewsletterUnsubscribe() {
-  const [params] = useSearchParams();
+  const { token } = useParams();
   const [state, setState] = useState('loading');
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    const token = params.get('token');
-    if (!token) { setState('error'); setMessage('This unsubscribe link is incomplete.'); return; }
-    api.unsubscribeByToken(token).then((res) => { setState('success'); setMessage(res.message); }).catch((err) => { setState('error'); setMessage(err.message || 'This unsubscribe link is invalid or has expired.'); });
-  }, [params]);
+    let active = true;
+    fetch(`${import.meta.env.VITE_API_URL || 'https://ipmc.onrender.com/api'}/newsletter/unsubscribe/${encodeURIComponent(token || '')}`)
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.message || 'This unsubscribe link is invalid or has expired.');
+        return data;
+      })
+      .then((data) => { if (active) { setMessage(data.message); setState('success'); } })
+      .catch((error) => { if (active) { setMessage(error.message); setState('error'); } });
+    return () => { active = false; };
+  }, [token]);
 
-  return <div className="pt-20 lg:pt-24 min-h-[70vh] flex items-center bg-gray-50 dark:bg-slate-950"><div className="container-custom max-w-xl text-center"><div className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-gray-100 dark:border-slate-800">
-    {state === 'loading' && <><Loader2 size={44} className="animate-spin text-primary-600 mx-auto mb-5" /><h1 className="font-display text-2xl font-bold">Updating your subscription…</h1></>}
-    {state === 'success' && <><CheckCircle2 size={50} className="text-emerald-500 mx-auto mb-5" /><h1 className="font-display text-2xl font-bold text-primary-900 dark:text-white">You're unsubscribed</h1><p className="text-gray-500 dark:text-gray-400 mt-3">{message}</p></>}
-    {state === 'error' && <><XCircle size={50} className="text-red-500 mx-auto mb-5" /><h1 className="font-display text-2xl font-bold text-primary-900 dark:text-white">Unable to unsubscribe</h1><p className="text-gray-500 dark:text-gray-400 mt-3">{message}</p></>}
-    <Link to="/newsletter" className="btn-primary inline-flex mt-7">Back to Newsletter</Link>
-  </div></div></div>;
+  return (
+    <div className="pt-20 lg:pt-24 min-h-[70vh] flex items-center bg-primary-50 dark:bg-slate-950">
+      <div className="container-custom max-w-xl py-20 text-center">
+        {state === 'loading' && <Loader2 size={44} className="animate-spin mx-auto text-primary-600" />}
+        {state === 'success' && <><CheckCircle2 size={56} className="mx-auto text-emerald-600 mb-5" /><h1 className="font-display text-3xl font-bold text-primary-900 dark:text-white">You’re unsubscribed</h1><p className="mt-3 text-gray-600 dark:text-gray-400">{message}</p></>}
+        {state === 'error' && <><MailX size={56} className="mx-auto text-gray-400 mb-5" /><h1 className="font-display text-3xl font-bold text-primary-900 dark:text-white">We couldn’t unsubscribe you</h1><p className="mt-3 text-gray-600 dark:text-gray-400">{message}</p></>}
+        {state !== 'loading' && <Link to="/" className="inline-flex mt-7 px-5 py-3 rounded-lg bg-primary-700 text-white font-semibold hover:bg-primary-800">Return to IPMC</Link>}
+      </div>
+    </div>
+  );
 }

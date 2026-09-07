@@ -16,7 +16,6 @@ const isPublicMutation = (req) => {
     path === '/api/contact' ||
     path === '/api/newsletter/subscribe' ||
     path === '/api/newsletter/unsubscribe' ||
-    path.startsWith('/api/newsletter/unsubscribe/') ||
     /^\/api\/events\/[^/]+\/rsvp$/.test(path) ||
     /^\/api\/jobs\/[^/]+\/apply$/.test(path)
   );

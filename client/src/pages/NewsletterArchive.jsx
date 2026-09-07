@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Calendar, ArrowRight, Loader2 } from 'lucide-react';
-import NewsletterSubscribeForm from '../components/UI/NewsletterSubscribeForm';
 import { api } from '../utils/api';
 
 export default function NewsletterArchive() {
@@ -25,18 +24,6 @@ export default function NewsletterArchive() {
             <h1 className="font-display text-4xl md:text-5xl font-bold text-white mt-4 mb-6">Newsletter Archive</h1>
             <p className="text-primary-200 text-lg">Past editions of IPMC Insights — project monitoring, ESG, and industry updates delivered to subscribers.</p>
           </motion.div>
-        </div>
-      </section>
-
-      <section className="py-10 bg-primary-50 dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800">
-        <div className="container-custom max-w-4xl">
-          <div className="bg-white dark:bg-slate-950 rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100 dark:border-slate-800">
-            <div className="flex flex-col md:flex-row md:items-center gap-5 mb-5">
-              <div className="w-12 h-12 rounded-xl bg-primary-100 dark:bg-slate-800 flex items-center justify-center shrink-0"><Mail className="text-primary-700 dark:text-accent-400" size={23} /></div>
-              <div><h2 className="font-display text-2xl font-bold text-primary-900 dark:text-white">Get IPMC Insights in your inbox</h2><p className="text-gray-500 dark:text-gray-400 mt-1">Subscribe for project monitoring, ESG and industry updates.</p></div>
-            </div>
-            <NewsletterSubscribeForm />
-          </div>
         </div>
       </section>
 

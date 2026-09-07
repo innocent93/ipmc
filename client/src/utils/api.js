@@ -76,10 +76,9 @@ export const api = {
   }),
 
   // Newsletter
-  subscribe: (email, source = 'newsletter-page') => apiFetch(`${API_BASE_URL}/newsletter/subscribe`, {
+  subscribe: (email, source = 'other') => apiFetch(`${API_BASE_URL}/newsletter/subscribe`, {
     method: 'POST', body: JSON.stringify({ email, source }),
   }),
-  unsubscribeByToken: (token) => apiFetch(`${API_BASE_URL}/newsletter/unsubscribe/${encodeURIComponent(token)}`),
 
   // ESG
   getESGReports: (params = '') => apiFetch(`${API_BASE_URL}/esg${params}`).then(listData),

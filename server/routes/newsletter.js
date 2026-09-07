@@ -11,7 +11,6 @@ const { validate, schemas } = require('../middleware/validation');
 router.post('/subscribe', validate(schemas.newsletter), subscribe);
 router.post('/unsubscribe', validate(schemas.newsletter), unsubscribe);
 router.get('/unsubscribe/:token', unsubscribeByToken);
-router.post('/unsubscribe/:token', unsubscribeByToken);
 router.get('/subscribers', authenticate, authorize('admin', 'editor'), getAllSubscribers);
 
 // Newsletter archive — the actual sent-issue content, distinct from the

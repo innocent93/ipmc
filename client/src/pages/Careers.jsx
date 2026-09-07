@@ -47,8 +47,7 @@ const locations = ['All', 'Lagos', 'Abuja', 'Port Harcourt'];
 const types = ['All', 'full-time', 'part-time', 'contract', 'internship'];
 
 export default function Careers() {
-  const [jobs, setJobs] = useState([]);
-  const [jobsLoading, setJobsLoading] = useState(true);
+  const [jobs, setJobs] = useState(sampleJobs);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDept, setSelectedDept] = useState('All');
   const [selectedLocation, setSelectedLocation] = useState('All');
@@ -58,11 +57,11 @@ export default function Careers() {
   const [applyingTo, setApplyingTo] = useState(null);
 
   useEffect(() => {
-    setJobsLoading(true);
     api.getJobs('?limit=100')
-      .then((data) => setJobs(Array.isArray(data) ? data : []))
-      .catch(() => setJobs([]))
-      .finally(() => setJobsLoading(false));
+      .then((data) => setJobs(data && data.length > 0 ? data : sampleJobs))
+      // Backend unreachable — fall back to the sample listings so the
+      // page still renders something, same pattern as blog/services.
+      .catch(() => setJobs(sampleJobs));
   }, []);
 
   const filteredJobs = jobs.filter(job => {
@@ -73,9 +72,6 @@ export default function Careers() {
     const matchesType = selectedType === 'All' || job.type === selectedType;
     return matchesSearch && matchesDept && matchesLocation && matchesType;
   });
-
-  const departmentOptions = ['All', ...new Set(jobs.map(j => j.department).filter(Boolean))];
-  const locationOptions = ['All', ...new Set(jobs.map(j => j.location).filter(Boolean))];
 
   return (
     <div className="pt-20 lg:pt-24">
@@ -158,14 +154,14 @@ export default function Careers() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
                       <select value={selectedDept} onChange={e => setSelectedDept(e.target.value)}
                         className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-primary-500 outline-none">
-                        {departmentOptions.map(d => <option key={d} value={d}>{d}</option>)}
+                        {departments.map(d => <option key={d} value={d}>{d}</option>)}
                       </select>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
                       <select value={selectedLocation} onChange={e => setSelectedLocation(e.target.value)}
                         className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-primary-500 outline-none">
-                        {locationOptions.map(l => <option key={l} value={l}>{l}</option>)}
+                        {locations.map(l => <option key={l} value={l}>{l}</option>)}
                       </select>
                     </div>
                     <div>
@@ -183,12 +179,12 @@ export default function Careers() {
 
           {/* Results Count */}
           <div className="mb-6 text-gray-600">
-            {jobsLoading ? 'Loading open positions…' : <>Showing <span className="font-semibold text-primary-900">{filteredJobs.length}</span> open position{filteredJobs.length !== 1 ? 's' : ''}</>}
+            Showing <span className="font-semibold text-primary-900">{filteredJobs.length}</span> open position{filteredJobs.length !== 1 ? 's' : ''}
           </div>
 
           {/* Job Listings */}
           <div className="space-y-4">
-            {!jobsLoading && filteredJobs.map((job, i) => (
+            {filteredJobs.map((job, i) => (
               <motion.div
                 key={job._id || job.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -207,8 +203,7 @@ export default function Careers() {
                       <span className="flex items-center gap-1"><Briefcase size={14} /> {job.department}</span>
                       <span className="flex items-center gap-1"><MapPin size={14} /> {job.location}</span>
                       <span className="flex items-center gap-1"><Clock size={14} /> {job.type}</span>
-                      {job.experienceLevel && <span className="px-2 py-0.5 rounded-full bg-primary-50 text-primary-600 text-xs font-medium">{job.experienceLevel}</span>}
-                      {job.closingDate && <span className="text-xs text-gray-400">Closes {new Date(job.closingDate).toLocaleDateString()}</span>}
+                      <span className="px-2 py-0.5 rounded-full bg-primary-50 text-primary-600 text-xs font-medium">{job.experienceLevel}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
@@ -268,7 +263,7 @@ export default function Careers() {
               </motion.div>
             ))}
 
-            {!jobsLoading && filteredJobs.length === 0 && (
+            {filteredJobs.length === 0 && (
               <div className="text-center py-16">
                 <Briefcase size={48} className="text-gray-300 mx-auto mb-4" />
                 <h3 className="font-display text-xl font-bold text-gray-600 mb-2">No jobs found</h3>

@@ -19,7 +19,6 @@ const navItems = [
   { path: '/admin/esg', label: 'ESG', icon: Leaf },
   { path: '/admin/applications', label: 'Job Applications', icon: ClipboardList },
   { path: '/admin/newsletter-issues', label: 'Newsletter Issues', icon: Send },
-  { path: '/admin/newsletter-subscribers', label: 'Newsletter Subscribers', icon: Users },
   { path: '/admin/messages', label: 'Messages', icon: MessageSquare },
   { path: '/admin/settings', label: 'Settings', icon: Settings },
   { path: '/admin/sessions', label: 'Active Sessions', icon: Monitor },

@@ -13,8 +13,7 @@ const emptyForm = {
   salaryRange: '', experienceLevel: '', isActive: true, closingDate: '',
 };
 
-const lines = (value) => Array.isArray(value) ? value.map(v => String(v).trim()).filter(Boolean) : String(value || '').split('\n').map(v => v.trim()).filter(Boolean);
-const slugify = (value) => String(value || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+const lines = (value) => Array.isArray(value) ? value : String(value || '').split('\n').map(v => v.trim()).filter(Boolean);
 
 export default function JobsManager({ addToast }) {
   const { user } = useAdmin();
@@ -74,7 +73,7 @@ export default function JobsManager({ addToast }) {
         <div className="flex items-center justify-between mb-6"><h2 className="text-xl font-bold">{editing ? 'Edit Job' : 'New Job'}</h2><button onClick={() => setModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button></div>
         <form onSubmit={submit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Title" required value={form.title} onChange={v => setForm({ ...form, title: v, ...(editing ? {} : { slug: slugify(v) }) })} />
+            <Field label="Title" required value={form.title} onChange={v => setForm({ ...form, title: v })} />
             <Field label="Slug" required value={form.slug} onChange={v => setForm({ ...form, slug: v })} />
             <Field label="Department" required value={form.department} onChange={v => setForm({ ...form, department: v })} />
             <Field label="Location" required value={form.location} onChange={v => setForm({ ...form, location: v })} />

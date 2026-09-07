@@ -76,7 +76,7 @@ function App() {
                   <Route path="/search" element={<SearchPage />} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/newsletter" element={<NewsletterArchive />} />
-                  <Route path="/newsletter/unsubscribe" element={<NewsletterUnsubscribe />} />
+                  <Route path="/newsletter/unsubscribe/:token" element={<NewsletterUnsubscribe />} />
                   <Route path="/newsletter/:slug" element={<NewsletterIssueDetail />} />
                   <Route path="/compare" element={<CompareServices />} />
                   <Route path="/terms" element={<Terms />} />

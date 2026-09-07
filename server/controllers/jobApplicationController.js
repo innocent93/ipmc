@@ -1,15 +1,11 @@
 const jobApplicationService = require('../services/jobApplicationService');
 const { sendEmailInBackground } = require('../utils/emailService');
-const emailTemplates = require('../utils/emailTemplates');
+const { jobApplicationReceivedEmail, applicationStatusEmail } = require('../utils/emailTemplates');
 
 exports.applyToJob = async (req, res) => {
   try {
     const application = await jobApplicationService.applyToJob(req.params.jobId, req.body);
-    sendEmailInBackground({
-      to: application.email,
-      subject: 'Application Received \u2014 IPMC Nigeria',
-      html: `<h2>Thank you, ${application.name}!</h2><p>We've received your application and will be in touch as your application progresses.</p>`,
-    });
+    sendEmailInBackground({ to: application.email, ...jobApplicationReceivedEmail({ name: application.name, jobTitle: application.job?.title }) });
     res.status(201).json({ success: true, message: 'Application submitted successfully', data: application });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -49,8 +45,7 @@ exports.updateApplicationStatus = async (req, res) => {
       };
       sendEmailInBackground({
         to: application.email,
-        subject: `Application Update \u2014 ${application.job?.title || 'IPMC Nigeria'}`,
-        html: `<h2>Hi ${application.name},</h2><p>${statusMessages[req.body.status]}</p>`,
+        ...applicationStatusEmail({ name: application.name, jobTitle: application.job?.title, message: statusMessages[req.body.status] }),
       });
     }
     res.status(200).json({ success: true, data: application });

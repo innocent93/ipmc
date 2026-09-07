@@ -281,10 +281,6 @@ export const eventAPI = {
   removeRsvp: (eventId, rsvpId) => apiFetch(`${API_BASE_URL}/events/${eventId}/rsvps/${rsvpId}`, { method: 'DELETE' }),
 };
 
-export const newsletterSubscriberAPI = {
-  getAll: (includeUnsubscribed = true) => apiFetch(`${API_BASE_URL}/newsletter/subscribers?includeUnsubscribed=${includeUnsubscribed}`),
-};
-
 export const newsletterIssueAPI = {
   getAll: () => apiFetch(`${API_BASE_URL}/newsletter/issues`),
   create: (data) => apiFetch(`${API_BASE_URL}/newsletter/issues`, { method: 'POST', body: JSON.stringify(data) }),

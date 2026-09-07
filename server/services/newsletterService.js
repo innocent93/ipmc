@@ -1,74 +1,59 @@
 const Newsletter = require('../models/Newsletter');
 const { sendEmailInBackground } = require('../utils/emailService');
-const emailTemplates = require('../utils/emailTemplates');
-const { createUnsubscribeToken, isValidUnsubscribeToken } = require('../utils/newsletterToken');
+const { welcomeEmail } = require('../utils/emailTemplates');
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
+const unsubscribeUrl = (token) => `${(process.env.CLIENT_URL || process.env.APP_URL || 'https://ipmc-ng.com').replace(/\/$/, '')}/newsletter/unsubscribe/${encodeURIComponent(token)}`;
 
-exports.subscribe = async (email, source = 'footer') => {
+exports.subscribe = async (email, source = 'other') => {
   const normalizedEmail = normalizeEmail(email);
-  const safeSource = ['footer', 'newsletter-page', 'import', 'admin', 'other'].includes(source) ? source : 'other';
   let subscriber = await Newsletter.findOne({ email: normalizedEmail });
+  const wasSubscribed = subscriber?.isSubscribed;
 
-  if (subscriber?.isSubscribed) {
-    return { subscriber, alreadySubscribed: true };
-  }
-
-  const now = new Date();
   if (subscriber) {
+    if (wasSubscribed) throw new Error('Email already subscribed');
     subscriber.isSubscribed = true;
-    subscriber.source = safeSource;
-    subscriber.resubscribedAt = now;
+    subscriber.subscribedAt = new Date();
     subscriber.unsubscribedAt = null;
-    subscriber.subscribedAt = now;
-    subscriber.welcomeEmailSentAt = null;
-    subscriber.unsubscribeTokenHash = createUnsubscribeToken(normalizedEmail);
+    subscriber.source = ['footer', 'newsletter-page', 'popup'].includes(source) ? source : 'other';
+    if (!subscriber.unsubscribeToken) subscriber.unsubscribeToken = require('crypto').randomBytes(24).toString('hex');
     await subscriber.save();
   } else {
-    subscriber = await Newsletter.create({ email: normalizedEmail, source: safeSource, subscribedAt: now, unsubscribeTokenHash: createUnsubscribeToken(normalizedEmail) });
+    subscriber = await Newsletter.create({
+      email: normalizedEmail,
+      source: ['footer', 'newsletter-page', 'popup'].includes(source) ? source : 'other',
+    });
   }
 
-  const template = emailTemplates.welcome(normalizedEmail);
-  sendEmailInBackground({ to: normalizedEmail, ...template, onSuccess: async () => {
-    await Newsletter.updateOne({ _id: subscriber._id }, { $set: { welcomeEmailSentAt: new Date() } });
-  }});
-
-  return { subscriber, alreadySubscribed: false };
+  const emailContent = welcomeEmail({ unsubscribeUrl: unsubscribeUrl(subscriber.unsubscribeToken) });
+  sendEmailInBackground({ to: normalizedEmail, ...emailContent });
+  subscriber.welcomeEmailSentAt = new Date();
+  await subscriber.save();
+  return subscriber;
 };
 
 exports.unsubscribe = async (email) => {
   const normalizedEmail = normalizeEmail(email);
-  const subscriber = await Newsletter.findOne({ email: normalizedEmail });
+  const subscriber = await Newsletter.findOneAndUpdate(
+    { email: normalizedEmail },
+    { isSubscribed: false, unsubscribedAt: new Date() },
+    { new: true, runValidators: true }
+  );
   if (!subscriber) throw new Error('Email not found');
-  if (subscriber.isSubscribed) {
-    subscriber.isSubscribed = false;
-    subscriber.unsubscribedAt = new Date();
-    await subscriber.save();
-  }
   return subscriber;
 };
 
 exports.unsubscribeByToken = async (token) => {
-  const normalizedToken = String(token || '').trim().toLowerCase();
-  let subscriber = await Newsletter.findOne({ unsubscribeTokenHash: normalizedToken });
-  // Backward compatibility for subscribers created before the token field was added.
-  if (!subscriber) {
-    const subscribers = await Newsletter.find({ unsubscribeTokenHash: { $exists: false } }).select('email isSubscribed unsubscribeTokenHash');
-    subscriber = subscribers.find((item) => isValidUnsubscribeToken(item.email, normalizedToken));
-    if (subscriber) {
-      subscriber.unsubscribeTokenHash = createUnsubscribeToken(subscriber.email);
-    }
-  }
+  const subscriber = await Newsletter.findOneAndUpdate(
+    { unsubscribeToken: token },
+    { isSubscribed: false, unsubscribedAt: new Date() },
+    { new: true }
+  );
   if (!subscriber) throw new Error('Invalid unsubscribe link');
-  if (subscriber.isSubscribed) {
-    subscriber.isSubscribed = false;
-    subscriber.unsubscribedAt = new Date();
-    await subscriber.save();
-  }
   return subscriber;
 };
 
-exports.getAllSubscribers = async ({ includeUnsubscribed = false } = {}) => {
+exports.getAllSubscribers = async (includeUnsubscribed = true) => {
   const filter = includeUnsubscribed ? {} : { isSubscribed: true };
-  return Newsletter.find(filter).sort({ subscribedAt: -1 });
+  return Newsletter.find(filter).sort({ isSubscribed: -1, subscribedAt: -1 });
 };
