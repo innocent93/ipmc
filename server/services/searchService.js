@@ -16,8 +16,8 @@ const TeamMember = require('../models/TeamMember');
 // two result sets are merged, text-search hits first (they're better
 // matches) followed by any additional regex-only partial matches, with
 // duplicates removed by _id.
-const textSearch = (Model, q, limit, projection) =>
-  Model.find({ $text: { $search: q } }, { score: { $meta: 'textScore' } })
+const textSearch = (Model, filter, q, limit, projection) =>
+  Model.find({ ...filter, $text: { $search: q } }, { score: { $meta: 'textScore' } })
     .sort({ score: { $meta: 'textScore' } })
     .limit(limit)
     .select(projection)
@@ -43,6 +43,7 @@ const mergeUnique = (primary, secondary, limit) => {
 exports.globalSearch = async (q, limit = 10) => {
   if (!q || q.trim().length < 2) throw new Error('Search query must be at least 2 characters');
   const term = q.trim();
+  limit = Math.min(Math.max(Number(limit) || 10, 1), 50);
   const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'); // escaped — a raw user string going straight into RegExp() is a ReDoS/injection risk otherwise
 
   const [
@@ -52,14 +53,14 @@ exports.globalSearch = async (q, limit = 10) => {
     jobResults,
     teamText, teamRegex,
   ] = await Promise.all([
-    textSearch(BlogPost, term, limit, 'title slug excerpt coverImage category publishedAt'),
-    regexSearch(BlogPost, { isPublished: true, $or: [{ title: regex }, { excerpt: regex }, { tags: regex }] }, limit, 'title slug excerpt coverImage category publishedAt'),
-    textSearch(Service, term, limit, 'title slug shortDescription icon category'),
-    regexSearch(Service, { isActive: true, $or: [{ title: regex }, { shortDescription: regex }] }, limit, 'title slug shortDescription icon category'),
+    textSearch(BlogPost, { isPublished: true }, term, limit, 'title slug excerpt coverImage category publishedAt'),
+    regexSearch(BlogPost, { isPublished: true, $or: [{ title: regex }, { excerpt: regex }, { content: regex }, { tags: regex }] }, limit, 'title slug excerpt coverImage category publishedAt'),
+    textSearch(Service, { isActive: true }, term, limit, 'title slug shortDescription icon category'),
+    regexSearch(Service, { isActive: true, $or: [{ title: regex }, { shortDescription: regex }, { fullDescription: regex }] }, limit, 'title slug shortDescription icon category'),
     // ESG/Jobs don't have text indexes yet — regex only, same as before.
-    regexSearch(ESGReport, { isPublished: true, $or: [{ title: regex }, { description: regex }] }, limit, 'title type description coverImage publishedAt'),
+    regexSearch(ESGReport, { isPublished: true, $or: [{ title: regex }, { description: regex }, { content: regex }] }, limit, 'title type description coverImage publishedAt'),
     regexSearch(Job, { isActive: true, $or: [{ title: regex }, { description: regex }] }, limit, 'title slug department location type'),
-    textSearch(TeamMember, term, limit, 'name role title image department'),
+    textSearch(TeamMember, { isActive: true }, term, limit, 'name role title image department'),
     regexSearch(TeamMember, { isActive: true, $or: [{ name: regex }, { role: regex }, { bio: regex }] }, limit, 'name role title image department'),
   ]);
 

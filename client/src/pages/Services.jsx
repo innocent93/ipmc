@@ -13,7 +13,7 @@ export default function Services() {
   const activeCategory = searchParams.get('category') || 'all';
 
   useEffect(() => {
-    api.getServices()
+    api.getServices('?limit=100')
       .then((res) => setServices(res && res.length > 0 ? res : SERVICES))
       // Backend unreachable — fall back to the full built-in catalog so
       // this page (and every link into it) still works.

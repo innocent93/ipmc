@@ -18,7 +18,6 @@ exports.schemas = {
     name: Joi.string().min(2).max(100).required(),
     email: Joi.string().email().required(),
     password: Joi.string().min(6).required(),
-    role: Joi.string().valid('admin', 'editor', 'viewer').optional(),
   }),
   blogPost: Joi.object({
     title: Joi.string().min(3).max(200).required(),
@@ -82,6 +81,7 @@ exports.schemas = {
   }),
   newsletter: Joi.object({
     email: Joi.string().email().required(),
+    source: Joi.string().valid('footer', 'newsletter-page', 'import', 'admin', 'other').optional(),
   }),
   partner: Joi.object({
     name: Joi.string().min(2).max(100).required(),

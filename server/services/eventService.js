@@ -56,3 +56,17 @@ exports.removeRsvp = async (eventId, rsvpId) => {
   await event.save();
   return event;
 };
+
+
+exports.getAllEventsAdmin = async (query = {}) => {
+  const { category, limit = 100, page = 1 } = query;
+  const safeLimit = Math.min(Math.max(Number(limit) || 100, 1), 200);
+  const safePage = Math.max(Number(page) || 1, 1);
+  const filter = {};
+  if (category) filter.category = category;
+  const [events, total] = await Promise.all([
+    Event.find(filter).sort({ startDate: 1 }).limit(safeLimit).skip((safePage - 1) * safeLimit),
+    Event.countDocuments(filter),
+  ]);
+  return { data: events, total, page: safePage };
+};

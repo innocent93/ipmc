@@ -24,7 +24,7 @@ export default function TeamManager({ addToast }) {
   const loadMembers = async () => {
     setLoading(true);
     try {
-      const res = await teamAPI.getAll('?limit=100');
+      const res = await teamAPI.getAdminAll('?limit=100');
       setMembers(res.data || []);
     } catch (err) {
       addToast?.(err.message, 'error');

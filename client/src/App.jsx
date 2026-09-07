@@ -33,6 +33,7 @@ const SearchPage = lazy(() => import('./pages/Search'));
 const Privacy = lazy(() => import('./pages/Privacy'));
 const NewsletterArchive = lazy(() => import('./pages/NewsletterArchive'));
 const NewsletterIssueDetail = lazy(() => import('./pages/NewsletterIssueDetail'));
+const NewsletterUnsubscribe = lazy(() => import('./pages/NewsletterUnsubscribe'));
 const CompareServices = lazy(() => import('./pages/CompareServices'));
 const Terms = lazy(() => import('./pages/Terms'));
 const NotFound = lazy(() => import('./pages/NotFound'));
@@ -40,9 +41,6 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 function App() {
   useEffect(() => {
     document.documentElement.style.scrollBehavior = 'smooth';
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(console.error);
-    }
   }, []);
 
   return (
@@ -78,6 +76,7 @@ function App() {
                   <Route path="/search" element={<SearchPage />} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/newsletter" element={<NewsletterArchive />} />
+                  <Route path="/newsletter/unsubscribe" element={<NewsletterUnsubscribe />} />
                   <Route path="/newsletter/:slug" element={<NewsletterIssueDetail />} />
                   <Route path="/compare" element={<CompareServices />} />
                   <Route path="/terms" element={<Terms />} />

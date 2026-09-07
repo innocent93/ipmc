@@ -1,6 +1,15 @@
 const teamService = require('../services/teamService');
 const activityLogService = require('../services/activityLogService');
 
+exports.getAllMembersAdmin = async (req, res) => {
+  try {
+    const result = await teamService.getAllMembersAdmin(req.query);
+    res.status(200).json({ success: true, ...(Array.isArray(result) ? { data: result } : result) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 exports.getAllMembers = async (req, res) => {
   try {
     const members = await teamService.getAllMembers(req.query);

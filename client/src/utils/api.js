@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://ipmc.onrender.com/api';
 
 class ApiError extends Error {
   constructor(message, status) {
@@ -12,88 +12,108 @@ const handleResponse = async (response) => {
   try {
     data = await response.json();
   } catch {
-    // Non-JSON response (e.g. an HTML error page from a misconfigured
-    // host) \u2014 surface a clear message instead of a cryptic parse error.
-    throw new ApiError(`Unexpected response from server (status ${response.status})`, response.status);
+    throw new ApiError(`Unexpected response from server (status ${response.status}).`, response.status);
   }
+
   if (!response.ok) {
-    throw new ApiError(data.message || 'Something went wrong', response.status);
+    throw new ApiError(data?.message || 'Something went wrong.', response.status);
   }
+
   return data;
 };
 
-const apiFetch = (url, options = {}, timeoutMs = 10000) => {
+const apiFetch = async (url, options = {}, timeoutMs = 10000) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  return fetch(url, {
-    ...options,
-    signal: controller.signal,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  })
-    .then(handleResponse)
-    .catch((err) => {
-      if (err.name === 'AbortError') {
-        throw new ApiError('Request timed out \u2014 the server took too long to respond.', undefined);
-      }
-      // Network-level failure: no VITE_API_URL configured, backend not
-      // deployed, CORS rejection, DNS failure, etc.
-      if (err instanceof ApiError) throw err;
-      throw new ApiError('Could not reach the server. Please check your connection.', undefined);
-    })
-    .finally(() => clearTimeout(timer));
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      credentials: 'omit',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+
+    return await handleResponse(response);
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new ApiError('Request timed out. Please try again.', undefined);
+    }
+    if (err instanceof ApiError) throw err;
+    throw new ApiError('Could not reach the server. Please check your connection.', undefined);
+  } finally {
+    clearTimeout(timer);
+  }
 };
+
+// Public list endpoints return { data: [...], pagination... } from Express.
+// Keep the page components simple by exposing the array they already expect.
+const listData = (response) => response?.data ?? [];
+const objectData = (response) => response?.data ?? null;
 
 export const api = {
   // Services
-  getServices: (params = '') => apiFetch(`${API_BASE_URL}/services${params}`).then(r => r.data),
-  getService: (slug) => apiFetch(`${API_BASE_URL}/services/${slug}`).then(r => r.data),
+  getServices: (params = '') => apiFetch(`${API_BASE_URL}/services${params}`).then(listData),
+  getService: (slug) => apiFetch(`${API_BASE_URL}/services/${encodeURIComponent(slug)}`).then(objectData),
 
   // Blog
-  getPosts: (params = '') => apiFetch(`${API_BASE_URL}/blog${params}`).then(r => r.data),
-  getPost: (slug) => apiFetch(`${API_BASE_URL}/blog/${slug}`).then(r => r.data),
-  getRelatedPosts: (slug) => apiFetch(`${API_BASE_URL}/blog/${slug}/related`).then(r => r.data),
+  getPosts: (params = '') => apiFetch(`${API_BASE_URL}/blog${params}`).then(listData),
+  getPost: (slug) => apiFetch(`${API_BASE_URL}/blog/${encodeURIComponent(slug)}`).then(objectData),
+  getRelatedPosts: (slug) => apiFetch(`${API_BASE_URL}/blog/${encodeURIComponent(slug)}/related`).then(listData),
 
   // Team
-  getTeam: (params = '') => apiFetch(`${API_BASE_URL}/team${params}`).then(r => r.data),
+  getTeam: (params = '') => apiFetch(`${API_BASE_URL}/team${params}`).then(listData),
 
   // Partners
-  getPartners: () => apiFetch(`${API_BASE_URL}/partners`).then(r => r.data),
+  getPartners: () => apiFetch(`${API_BASE_URL}/partners`).then(listData),
 
   // Contact
-  submitContact: (data) => apiFetch(`${API_BASE_URL}/contact`, { method: 'POST', body: JSON.stringify(data) }),
+  submitContact: (data) => apiFetch(`${API_BASE_URL}/contact`, {
+    method: 'POST', body: JSON.stringify(data),
+  }),
 
   // Newsletter
-  subscribe: (email) => apiFetch(`${API_BASE_URL}/newsletter/subscribe`, { method: 'POST', body: JSON.stringify({ email }) }),
+  subscribe: (email, source = 'newsletter-page') => apiFetch(`${API_BASE_URL}/newsletter/subscribe`, {
+    method: 'POST', body: JSON.stringify({ email, source }),
+  }),
+  unsubscribeByToken: (token) => apiFetch(`${API_BASE_URL}/newsletter/unsubscribe/${encodeURIComponent(token)}`),
 
   // ESG
-  getESGReports: (params = '') => apiFetch(`${API_BASE_URL}/esg${params}`).then(r => r.data),
-  getESGReport: (id) => apiFetch(`${API_BASE_URL}/esg/${id}`).then(r => r.data),
+  getESGReports: (params = '') => apiFetch(`${API_BASE_URL}/esg${params}`).then(listData),
+  getESGReport: (id) => apiFetch(`${API_BASE_URL}/esg/${encodeURIComponent(id)}`).then(objectData),
 
   // Jobs
-  getJobs: (params = '') => apiFetch(`${API_BASE_URL}/jobs${params}`).then(r => r.data),
-  getJob: (slug) => apiFetch(`${API_BASE_URL}/jobs/${slug}`).then(r => r.data),
+  getJobs: (params = '') => apiFetch(`${API_BASE_URL}/jobs${params}`).then(listData),
+  getJob: (slug) => apiFetch(`${API_BASE_URL}/jobs/${encodeURIComponent(slug)}`).then(objectData),
 
-  // Search
-  search: (q, limit = 10) => apiFetch(`${API_BASE_URL}/search?q=${encodeURIComponent(q)}&limit=${limit}`).then(r => r.data),
+  // Search returns a grouped object rather than a simple array.
+  search: (q, limit = 10) => apiFetch(
+    `${API_BASE_URL}/search?q=${encodeURIComponent(q)}&limit=${limit}`
+  ).then((response) => response?.data || {
+    services: [], blogs: [], esg: [], jobs: [], team: [], total: 0,
+  }),
 
   // Settings (public)
-  getPublicSettings: () => apiFetch(`${API_BASE_URL}/settings/public`).then(r => r.data),
+  getPublicSettings: () => apiFetch(`${API_BASE_URL}/settings/public`).then(objectData),
 
   // Events + RSVP
-  getEvents: (params = '') => apiFetch(`${API_BASE_URL}/events${params}`).then(r => r.data),
-  getEvent: (slug) => apiFetch(`${API_BASE_URL}/events/${slug}`).then(r => r.data),
-  rsvpToEvent: (slug, data) => apiFetch(`${API_BASE_URL}/events/${slug}/rsvp`, { method: 'POST', body: JSON.stringify(data) }),
+  getEvents: (params = '') => apiFetch(`${API_BASE_URL}/events${params}`).then(listData),
+  getEvent: (slug) => apiFetch(`${API_BASE_URL}/events/${encodeURIComponent(slug)}`).then(objectData),
+  rsvpToEvent: (slug, data) => apiFetch(`${API_BASE_URL}/events/${encodeURIComponent(slug)}/rsvp`, {
+    method: 'POST', body: JSON.stringify(data),
+  }),
 
   // Job applications
-  applyToJob: (jobId, data) => apiFetch(`${API_BASE_URL}/jobs/${jobId}/apply`, { method: 'POST', body: JSON.stringify(data) }),
+  applyToJob: (jobId, data) => apiFetch(`${API_BASE_URL}/jobs/${encodeURIComponent(jobId)}/apply`, {
+    method: 'POST', body: JSON.stringify(data),
+  }),
 
   // Newsletter archive
-  getNewsletterArchive: (params = '') => apiFetch(`${API_BASE_URL}/newsletter/archive${params}`).then(r => r.data),
-  getNewsletterIssue: (slug) => apiFetch(`${API_BASE_URL}/newsletter/archive/${slug}`).then(r => r.data),
+  getNewsletterArchive: (params = '') => apiFetch(`${API_BASE_URL}/newsletter/archive${params}`).then(listData),
+  getNewsletterIssue: (slug) => apiFetch(`${API_BASE_URL}/newsletter/archive/${encodeURIComponent(slug)}`).then(objectData),
 };
 
 export default api;

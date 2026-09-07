@@ -43,11 +43,11 @@ const issueRefreshToken = async (user, userAgent) => {
 };
 
 exports.register = async (data) => {
-  const { name, email, password, role } = data;
+  const { name, email, password } = data;
   const existingUser = await User.findOne({ email });
   if (existingUser) throw new Error('User already exists');
 
-  const user = await User.create({ name, email, password, role: role || 'viewer' });
+  const user = await User.create({ name, email, password, role: 'viewer' });
   const token = signAccessToken(user._id);
   const refreshToken = await issueRefreshToken(user);
 
@@ -160,20 +160,24 @@ exports.changePassword = async (userId, currentPassword, newPassword) => {
 
 exports.forgotPassword = async (email) => {
   const user = await User.findOne({ email });
-  if (!user) throw new Error('No user found with that email');
+
+  // Always return the same success response so the endpoint cannot be used
+  // to enumerate registered admin emails.
+  if (!user) {
+    return { success: true, message: 'If an account exists, a reset link has been sent.' };
+  }
 
   const resetToken = user.createPasswordResetToken();
   await user.save({ validateBeforeSave: false });
 
-  // Falls back to localhost only as a last resort \u2014 if ADMIN_URL isn't
-  // set in production, that fallback would otherwise silently ship a
-  // broken localhost link inside a real password-reset email.
   const adminUrl = process.env.ADMIN_URL || 'http://localhost:5174';
   if (!process.env.ADMIN_URL) {
-    logger.warn('admin_url_not_configured', { message: 'ADMIN_URL is unset \u2014 reset email will link to localhost.' });
+    logger.warn('admin_url_not_configured', { message: 'ADMIN_URL is unset — reset email will link to localhost.' });
   }
   const resetURL = `${adminUrl}/admin/reset-password/${resetToken}`;
 
+  // Email delivery is best-effort. The reset endpoint should not expose a
+  // provider error to the browser.
   await sendEmail({
     to: email,
     subject: 'Password Reset Request',
@@ -186,7 +190,7 @@ exports.forgotPassword = async (email) => {
     `
   });
 
-  return { success: true, message: 'Reset link sent to email' };
+  return { success: true, message: 'If an account exists, a reset link has been sent.' };
 };
 
 exports.resetPassword = async (rawToken, newPassword) => {
@@ -203,7 +207,5 @@ exports.resetPassword = async (rawToken, newPassword) => {
   // old password.
   user.refreshSessions = [];
 
-  const token = signAccessToken(user._id);
-  const refreshToken = await issueRefreshToken(user);
-  return { token, refreshToken, user: { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar } };
+  return { success: true, message: 'Password updated successfully.' };
 };

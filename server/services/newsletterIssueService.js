@@ -1,6 +1,7 @@
 const NewsletterIssue = require('../models/NewsletterIssue');
 const Newsletter = require('../models/Newsletter');
 const { sendEmailInBackground } = require('../utils/emailService');
+const emailTemplates = require('../utils/emailTemplates');
 
 exports.getPublishedArchive = async (query) => {
   const { page = 1, limit = 12 } = query;
@@ -32,7 +33,10 @@ exports.sendIssue = async (id) => {
 
   const subscribers = await Newsletter.find({ isSubscribed: true }).select('email');
   for (const sub of subscribers) {
-    sendEmailInBackground({ to: sub.email, subject: issue.subject, html: issue.content });
+    const template = emailTemplates.issue({ subject: issue.subject, summary: issue.summary, content: issue.content, email: sub.email });
+    sendEmailInBackground({ to: sub.email, ...template, onSuccess: async () => {
+      await Newsletter.updateOne({ _id: sub._id }, { $set: { lastNewsletterSentAt: new Date() } });
+    }});
   }
 
   issue.sentAt = new Date();

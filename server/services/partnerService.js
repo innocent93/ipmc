@@ -10,3 +10,11 @@ exports.getAllPartners = async (query) => {
 exports.createPartner = async (data) => await Partner.create(data);
 exports.updatePartner = async (id, data) => await Partner.findByIdAndUpdate(id, data, { new: true, runValidators: true });
 exports.deletePartner = async (id) => await Partner.findByIdAndDelete(id);
+
+
+exports.getAllPartnersAdmin = async (query = {}) => {
+  const { category } = query;
+  const filter = {};
+  if (category) filter.category = category;
+  return await Partner.find(filter).sort({ order: 1, createdAt: -1 });
+};

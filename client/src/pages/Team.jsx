@@ -10,7 +10,7 @@ export default function Team() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getTeam()
+    api.getTeam('?limit=100')
       .then(res => setMembers(res && res.length > 0 ? res : FALLBACK_TEAM))
       .catch(() => setMembers(FALLBACK_TEAM))
       .finally(() => setLoading(false));

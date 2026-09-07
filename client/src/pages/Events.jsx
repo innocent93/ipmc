@@ -43,14 +43,40 @@ export default function Events() {
   const [rsvpEvent, setRsvpEvent] = useState(null);
 
   useEffect(() => {
-    api.getEvents()
-      .then((data) => setEventsData(data && data.length > 0 ? data : events))
+    api.getEvents('?limit=100')
+      .then((data) => {
+        if (!Array.isArray(data) || data.length === 0) {
+          setEventsData(events);
+          return;
+        }
+
+        const normalized = data.map((event) => {
+          const start = new Date(event.startDate);
+          const end = event.endDate ? new Date(event.endDate) : null;
+          const time = end
+            ? `${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+            : start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+          return {
+            ...event,
+            id: event._id,
+            date: event.startDate,
+            time,
+            type: event.category ? event.category.charAt(0).toUpperCase() + event.category.slice(1) : 'Event',
+            image: event.coverImage || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&q=80',
+            attendees: event.rsvpCount || 0,
+            status: start >= new Date() ? 'upcoming' : 'past',
+          };
+        });
+
+        setEventsData(normalized);
+      })
       .catch(() => setEventsData(events));
   }, []);
 
   const filteredEvents = activeCategory === 'All' 
     ? eventsData 
-    : eventsData.filter(e => e.type === activeCategory);
+    : eventsData.filter(e => e.type?.toLowerCase() === activeCategory.toLowerCase());
 
   const upcomingEvents = filteredEvents.filter(e => e.status === 'upcoming');
   const pastEvents = filteredEvents.filter(e => e.status === 'past');

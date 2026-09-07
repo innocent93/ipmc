@@ -1,12 +1,17 @@
 const authService = require('../services/authService');
-const { setAuthCookies, clearAuthCookies, setRefreshCookie, clearRefreshCookie } = require('../utils/authCookies');
+const { setAuthCookies, clearAuthCookies, setRefreshCookie, clearRefreshCookie, setCsrfCookie } = require('../utils/authCookies');
+
+exports.getCsrfToken = (req, res) => {
+  const csrfToken = setCsrfCookie(res);
+  res.status(200).json({ success: true, csrfToken });
+};
 
 exports.register = async (req, res) => {
   try {
     const result = await authService.register(req.body);
-    setAuthCookies(res, result.token);
+    const csrfToken = setAuthCookies(res, result.token);
     setRefreshCookie(res, result.refreshToken);
-    res.status(201).json({ success: true, user: result.user });
+    res.status(201).json({ success: true, csrfToken, user: result.user });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
@@ -22,9 +27,9 @@ exports.login = async (req, res) => {
     // minutes instead of staying valid for a full 30-day session. Each
     // login creates its own session entry, so signing in on a second
     // device doesn't sign the first one out.
-    setAuthCookies(res, result.token);
+    const csrfToken = setAuthCookies(res, result.token);
     setRefreshCookie(res, result.refreshToken);
-    res.status(200).json({ success: true, user: result.user });
+    res.status(200).json({ success: true, csrfToken, user: result.user });
   } catch (error) {
     res.status(401).json({ success: false, message: error.message });
   }
@@ -33,9 +38,9 @@ exports.login = async (req, res) => {
 exports.refresh = async (req, res) => {
   try {
     const result = await authService.refreshAccessToken(req.cookies?.refreshToken, req.header('User-Agent'));
-    setAuthCookies(res, result.token);
+    const csrfToken = setAuthCookies(res, result.token);
     setRefreshCookie(res, result.refreshToken);
-    res.status(200).json({ success: true, token: result.token, user: result.user });
+    res.status(200).json({ success: true, csrfToken, user: result.user });
   } catch (error) {
     clearAuthCookies(res);
     res.status(401).json({ success: false, message: error.message });
@@ -112,8 +117,8 @@ exports.forgotPassword = async (req, res) => {
 
 exports.resetPassword = async (req, res) => {
   try {
-    const result = await authService.resetPassword(req.params.token, req.body.password);
-    res.status(200).json({ success: true, ...result });
+    await authService.resetPassword(req.params.token, req.body.password);
+    res.status(200).json({ success: true, message: 'Password updated successfully.' });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }

@@ -25,7 +25,7 @@ export default function BlogManager({ addToast }) {
   const loadPosts = async () => {
     setLoading(true);
     try {
-      const res = await blogAPI.getAll('?limit=100');
+      const res = await blogAPI.getAdminAll('?limit=100');
       setPosts(res.data || []);
     } catch (err) {
       addToast?.(err.message, 'error');
@@ -152,14 +152,14 @@ export default function BlogManager({ addToast }) {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Author Name</label>
-                  <input value={form.author.name} onChange={e => setForm({...form, author: {...form.author, name: e.target.value}})}
+                  <input required value={form.author.name} onChange={e => setForm({...form, author: {...form.author, name: e.target.value}})}
                     className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-blue-500 outline-none" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Cover Image</label>
                 <div className="flex gap-2">
-                  <input value={form.coverImage} onChange={e => setForm({...form, coverImage: e.target.value})}
+                  <input required value={form.coverImage} onChange={e => setForm({...form, coverImage: e.target.value})}
                     className="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:border-blue-500 outline-none" placeholder="Image URL" />
                   <label className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors">
                     <ImageIcon size={18} /> {uploading ? '...' : 'Upload'}

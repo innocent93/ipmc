@@ -12,8 +12,12 @@ import Messages from './pages/Messages';
 import EventManager from './pages/EventManager';
 import JobApplicationsManager from './pages/JobApplicationsManager';
 import NewsletterManager from './pages/NewsletterManager';
+import NewsletterSubscribers from './pages/NewsletterSubscribers';
 import Settings from './pages/Settings';
 import Sessions from './pages/Sessions';
+import JobsManager from './pages/JobsManager';
+import PartnersManager from './pages/PartnersManager';
+import ESGManager from './pages/ESGManager';
 import Toast from './components/UI/Toast';
 import { useToast } from './hooks/useToast';
 
@@ -35,8 +39,12 @@ function AdminRoutes() {
         <Route path="/team" element={<TeamManager addToast={addToast} />} />
         <Route path="/messages" element={<Messages addToast={addToast} />} />
         <Route path="/events" element={<EventManager addToast={addToast} />} />
+        <Route path="/jobs" element={<JobsManager addToast={addToast} />} />
+        <Route path="/partners" element={<PartnersManager addToast={addToast} />} />
+        <Route path="/esg" element={<ESGManager addToast={addToast} />} />
         <Route path="/applications" element={<JobApplicationsManager addToast={addToast} />} />
         <Route path="/newsletter-issues" element={<NewsletterManager addToast={addToast} />} />
+        <Route path="/newsletter-subscribers" element={<NewsletterSubscribers addToast={addToast} />} />
         <Route path="/settings" element={<Settings addToast={addToast} />} />
         <Route path="/sessions" element={<Sessions addToast={addToast} />} />
       </Routes>

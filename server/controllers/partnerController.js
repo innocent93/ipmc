@@ -1,6 +1,15 @@
 const partnerService = require('../services/partnerService');
 const activityLogService = require('../services/activityLogService');
 
+exports.getAllPartnersAdmin = async (req, res) => {
+  try {
+    const result = await partnerService.getAllPartnersAdmin(req.query);
+    res.status(200).json({ success: true, ...(Array.isArray(result) ? { data: result } : result) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 exports.getAllPartners = async (req, res) => {
   try {
     const partners = await partnerService.getAllPartners(req.query);

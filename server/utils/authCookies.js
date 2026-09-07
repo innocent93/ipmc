@@ -53,11 +53,15 @@ exports.clearRefreshCookie = (res) => {
   res.clearCookie('refreshToken', { path: '/api/auth' });
 };
 
-exports.setAuthCookies = (res, token) => {
-  res.cookie('token', token, AUTH_COOKIE_OPTS);
+exports.setCsrfCookie = (res) => {
   const csrfToken = crypto.randomBytes(32).toString('hex');
   res.cookie('csrfToken', csrfToken, CSRF_COOKIE_OPTS);
   return csrfToken;
+};
+
+exports.setAuthCookies = (res, token) => {
+  res.cookie('token', token, AUTH_COOKIE_OPTS);
+  return exports.setCsrfCookie(res);
 };
 
 exports.clearAuthCookies = (res) => {

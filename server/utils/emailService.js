@@ -14,7 +14,7 @@ if (!resendConfigured) {
   });
 }
 
-exports.sendEmail = async ({ to, subject, html, text }) => {
+exports.sendEmail = async ({ to, subject, html, text, headers, onSuccess, onError }) => {
   if (!resendConfigured) {
     logger.warn('email_skipped_resend_not_configured', { to, subject });
     return { success: false, error: 'Resend is not configured' };
@@ -40,6 +40,7 @@ exports.sendEmail = async ({ to, subject, html, text }) => {
         subject,
         html,
         text,
+        ...(headers ? { headers } : {}),
       }),
     });
 
@@ -50,10 +51,20 @@ exports.sendEmail = async ({ to, subject, html, text }) => {
     }
 
     logger.info('email_sent', { messageId: data.id, to, subject, provider: 'resend' });
+    if (onSuccess) {
+      try { await onSuccess(data); } catch (callbackError) {
+        logger.error('email_success_callback_failed', { message: callbackError.message, to, subject });
+      }
+    }
     return { success: true, messageId: data.id };
   } catch (error) {
     const message = error.name === 'AbortError' ? 'Resend API request timed out' : error.message;
     logger.error('email_send_failed', { message, to, subject, provider: 'resend' });
+    if (onError) {
+      try { await onError(error); } catch (callbackError) {
+        logger.error('email_error_callback_failed', { message: callbackError.message, to, subject });
+      }
+    }
     return { success: false, error: message };
   } finally {
     clearTimeout(timer);
@@ -65,8 +76,8 @@ exports.sendEmail = async ({ to, subject, html, text }) => {
 // "your message was saved" shouldn't hang on "and the email confirming it
 // was sent"). Failures are logged, never thrown, and never bubble up to
 // crash or hang the calling request.
-exports.sendEmailInBackground = ({ to, subject, html, text }) => {
-  exports.sendEmail({ to, subject, html, text }).catch((error) => {
+exports.sendEmailInBackground = ({ to, subject, html, text, headers, onSuccess, onError }) => {
+  exports.sendEmail({ to, subject, html, text, headers, onSuccess, onError }).catch((error) => {
     logger.error('email_background_send_failed', { message: error.message, to, subject });
   });
 };

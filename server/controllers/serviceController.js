@@ -1,6 +1,15 @@
 const serviceService = require('../services/serviceService');
 const activityLogService = require('../services/activityLogService');
 
+exports.getAllServicesAdmin = async (req, res) => {
+  try {
+    const result = await serviceService.getAllServicesAdmin(req.query);
+    res.status(200).json({ success: true, ...(Array.isArray(result) ? { data: result } : result) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 exports.getAllServices = async (req, res) => {
   try {
     const result = await serviceService.getAllServices(req.query);

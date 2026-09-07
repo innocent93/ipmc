@@ -1,35 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
-// Catches the single most common deploy mistake early, with a clear
-// message instead of a cryptic "Unexpected response (status 405)":
-// VITE_API_URL is a Vite build-time variable — if it's left unset, or
-// accidentally pointed at this admin app's own domain instead of the
-// separately-deployed backend, every API call resolves back to this
-// static site. Vercel's static hosting only serves GET/HEAD, so a POST
-// (e.g. login) gets a 405 with an HTML error body, which is exactly the
-// confusing symptom this guards against.
-if (typeof window !== 'undefined') {
-  const sameOriginAsThisApp = API_BASE_URL.startsWith(window.location.origin);
-  const stillDefaultLocalhost = !import.meta.env.VITE_API_URL;
-  if (import.meta.env.PROD && (sameOriginAsThisApp || stillDefaultLocalhost)) {
-    // eslint-disable-next-line no-console
-    console.error(
-      '[IPMC Admin] VITE_API_URL is missing or points at this admin app itself ' +
-      `(resolved to "${API_BASE_URL}"). Set VITE_API_URL in this Vercel project's ` +
-      'environment variables to your deployed backend URL (e.g. https://your-api.onrender.com/api) ' +
-      'and redeploy — Vite bakes this in at build time, so changing it alone without a ' +
-      'rebuild has no effect.'
-    );
-  }
-}
-
-// Reads the (deliberately non-httpOnly) CSRF cookie the server sets on
-// login, so it can be echoed back as a header on mutating requests —
-// the double-submit pattern in server/middleware/csrf.js.
-const getCsrfToken = () => {
-  const match = document.cookie.match(/(?:^|;\s*)csrfToken=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : null;
-};
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://ipmc.onrender.com/api';
 
 class ApiError extends Error {
   constructor(message, status) {
@@ -38,180 +7,273 @@ class ApiError extends Error {
   }
 }
 
-const handleResponse = async (response) => {
-  let data;
+// The API and admin app are deployed on different domains. A browser page on
+// Vercel cannot read a non-httpOnly cookie owned by the Render API domain, so
+// the CSRF token is returned by the API and kept in sessionStorage instead.
+const CSRF_STORAGE_KEY = 'ipmc_csrf_token';
+let csrfToken = typeof window !== 'undefined'
+  ? sessionStorage.getItem(CSRF_STORAGE_KEY)
+  : null;
+
+const setCsrfToken = (token) => {
+  if (!token || typeof window === 'undefined') return;
+  csrfToken = token;
+  sessionStorage.setItem(CSRF_STORAGE_KEY, token);
+};
+
+const clearCsrfToken = () => {
+  csrfToken = null;
+  if (typeof window !== 'undefined') sessionStorage.removeItem(CSRF_STORAGE_KEY);
+};
+
+const isAuthEndpoint = (url) =>
+  url.includes('/auth/login') ||
+  url.includes('/auth/refresh') ||
+  url.includes('/auth/register') ||
+  url.includes('/auth/forgot-password') ||
+  url.includes('/auth/reset-password/');
+
+const initializeCsrf = async () => {
+  const response = await fetch(`${API_BASE_URL}/auth/csrf`, {
+    method: 'GET',
+    credentials: 'include',
+  });
+
+  let data = {};
   try {
     data = await response.json();
   } catch {
-    // A non-JSON body on a 404/405 almost always means the request never
-    // reached the real backend at all — see the VITE_API_URL check above.
-    const hint = (response.status === 404 || response.status === 405)
-      ? ' A non-JSON response on a 404/405 means the request never reached your Express app at all — some hosting platform layer answered instead. On Render specifically, this is almost always the service being deployed as a "Static Site" instead of a "Web Service" (check the service type in Render\u2019s dashboard). Also double-check VITE_API_URL points to the exact backend URL and that this admin app was rebuilt after setting it. Use the "Connection diagnostic" panel on the login page for a direct test.'
-      : '';
-    throw new ApiError(`Unexpected response from server (status ${response.status}).${hint}`, response.status);
+    throw new ApiError(`Unexpected response from server (status ${response.status})`, response.status);
   }
+
+  if (!response.ok || !data.csrfToken) {
+    throw new ApiError(data.message || 'Unable to initialize security token.', response.status);
+  }
+
+  setCsrfToken(data.csrfToken);
+  return data.csrfToken;
+};
+
+const handleResponse = async (response) => {
+  let data;
+
+  try {
+    data = await response.json();
+  } catch {
+    throw new ApiError(`Unexpected response from server (status ${response.status}).`, response.status);
+  }
+
+  // Login/refresh/bootstrap responses rotate the CSRF token.
+  if (data?.csrfToken) setCsrfToken(data.csrfToken);
+
   if (!response.ok) {
-    throw new ApiError(data.message || 'Something went wrong', response.status);
+    throw new ApiError(data?.message || 'Something went wrong.', response.status);
   }
+
   return data;
 };
 
-const isAuthEndpoint = (url) => url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/register');
-
-// If a session's short-lived access token has expired, this silently
-// exchanges the refresh cookie for a new one instead of forcing a full
-// re-login. Only one refresh attempt runs at a time — concurrent 401s
-// (e.g. several widgets fetching on page load) share the same in-flight
-// refresh rather than each racing to rotate the refresh token, which
-// would invalidate each other's attempts.
 let refreshPromise = null;
+
 const attemptRefresh = () => {
   if (!refreshPromise) {
-    refreshPromise = fetch(`${API_BASE_URL}/auth/refresh`, { method: 'POST', credentials: 'include' })
-      .then((res) => res.ok)
+    refreshPromise = fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          clearCsrfToken();
+          return false;
+        }
+
+        const data = await response.json().catch(() => ({}));
+        if (data.csrfToken) setCsrfToken(data.csrfToken);
+        return true;
+      })
       .catch(() => false)
-      .finally(() => { refreshPromise = null; });
+      .finally(() => {
+        refreshPromise = null;
+      });
   }
+
   return refreshPromise;
 };
 
-const doFetch = (url, options, timeoutMs) => {
+const doFetch = async (url, options, timeoutMs) => {
+  const method = (options.method || 'GET').toUpperCase();
+  const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(method);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const method = (options.method || 'GET').toUpperCase();
 
-  return fetch(url, {
-    ...options,
-    signal: controller.signal,
-    // Sends the httpOnly auth cookie with every request — this replaces
-    // the old manual `Authorization: Bearer <token>` header read from
-    // localStorage.
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(method !== 'GET' && method !== 'HEAD' ? { 'X-CSRF-Token': getCsrfToken() } : {}),
-      ...options.headers,
-    },
-  }).finally(() => clearTimeout(timer));
+  try {
+    // Login, forgot/reset-password and refresh are intentionally CSRF-exempt
+    // on the server because they do not depend on an existing admin session.
+    if (isMutation && !isAuthEndpoint(url) && !csrfToken) {
+      await initializeCsrf();
+    }
+
+    const headers = new Headers(options.headers || {});
+    if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
+    if (isMutation && !isAuthEndpoint(url) && csrfToken) {
+      headers.set('X-CSRF-Token', csrfToken);
+    }
+
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      credentials: 'include',
+      headers,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 };
 
-const apiFetch = async (url, options = {}, timeoutMs = 10000, _isRetry = false) => {
+const apiFetch = async (url, options = {}, timeoutMs = 10000, retry = 0) => {
   let response;
+
   try {
     response = await doFetch(url, options, timeoutMs);
   } catch (err) {
     if (err.name === 'AbortError') {
-      throw new ApiError('Request timed out — the server took too long to respond.', undefined);
+      throw new ApiError('Request timed out. Please try again.', undefined);
     }
-    // Network-level failure: VITE_API_URL not set for this deploy,
-    // backend unreachable, CORS rejection, DNS failure, etc.
+    if (err instanceof ApiError) throw err;
     throw new ApiError('Could not reach the server. Please check your connection.', undefined);
   }
 
-  if (response.status === 401 && !_isRetry && !isAuthEndpoint(url)) {
+  if (response.status === 401 && retry === 0 && !isAuthEndpoint(url)) {
     const refreshed = await attemptRefresh();
-    if (refreshed) return apiFetch(url, options, timeoutMs, true); // retry exactly once
-    if (!window.location.pathname.includes('/admin/login')) {
+    if (refreshed) return apiFetch(url, options, timeoutMs, 1);
+
+    clearCsrfToken();
+    if (typeof window !== 'undefined' && !window.location.pathname.includes('/admin/login')) {
       window.location.href = '/admin/login';
+    }
+  }
+
+  // Recover once from a stale/missing CSRF token (for example after a token
+  // rotation in another tab). This keeps the individual pages simple.
+  if (response.status === 403 && retry === 0 && !isAuthEndpoint(url)) {
+    let body = {};
+    try { body = await response.clone().json(); } catch { /* ignore */ }
+    if (String(body.message || '').toLowerCase().includes('csrf')) {
+      try {
+        await initializeCsrf();
+        return apiFetch(url, options, timeoutMs, 1);
+      } catch {
+        // Fall through to the original server error.
+      }
     }
   }
 
   return handleResponse(response);
 };
 
-// Auth
 export const authAPI = {
-  login: (email, password) => apiFetch(`${API_BASE_URL}/auth/login`, { method: 'POST', body: JSON.stringify({ email, password }) }),
+  getCsrf: initializeCsrf,
+  login: (email, password) => apiFetch(`${API_BASE_URL}/auth/login`, {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  }),
   logout: () => apiFetch(`${API_BASE_URL}/auth/logout`, { method: 'POST' }),
   getMe: () => apiFetch(`${API_BASE_URL}/auth/me`),
-  updateProfile: (data) => apiFetch(`${API_BASE_URL}/auth/profile`, { method: 'PUT', body: JSON.stringify(data) }),
-  changePassword: (currentPassword, newPassword) => apiFetch(`${API_BASE_URL}/auth/change-password`, { method: 'PUT', body: JSON.stringify({ currentPassword, newPassword }) }),
-  forgotPassword: (email) => apiFetch(`${API_BASE_URL}/auth/forgot-password`, { method: 'POST', body: JSON.stringify({ email }) }),
-  resetPassword: (token, password) => apiFetch(`${API_BASE_URL}/auth/reset-password/${token}`, { method: 'PUT', body: JSON.stringify({ password }) }),
-  // Multi-device session management — lets a user see every device
-  // that's currently logged in and revoke any one of them individually
-  // (e.g. a lost phone) without signing themselves out everywhere.
+  updateProfile: (data) => apiFetch(`${API_BASE_URL}/auth/profile`, {
+    method: 'PUT', body: JSON.stringify(data),
+  }),
+  changePassword: (currentPassword, newPassword) => apiFetch(`${API_BASE_URL}/auth/change-password`, {
+    method: 'PUT', body: JSON.stringify({ currentPassword, newPassword }),
+  }),
+  forgotPassword: (email) => apiFetch(`${API_BASE_URL}/auth/forgot-password`, {
+    method: 'POST', body: JSON.stringify({ email }),
+  }),
+  resetPassword: (token, password) => apiFetch(`${API_BASE_URL}/auth/reset-password/${encodeURIComponent(token)}`, {
+    method: 'PUT', body: JSON.stringify({ password }),
+  }),
   listSessions: () => apiFetch(`${API_BASE_URL}/auth/sessions`),
   revokeSession: (sessionId) => apiFetch(`${API_BASE_URL}/auth/sessions/${sessionId}`, { method: 'DELETE' }),
 };
 
-// Blog
 export const blogAPI = {
   getAll: (params = '') => apiFetch(`${API_BASE_URL}/blog${params}`),
+  getAdminAll: (params = '') => apiFetch(`${API_BASE_URL}/blog/admin/all${params}`),
   getBySlug: (slug) => apiFetch(`${API_BASE_URL}/blog/${slug}`),
   create: (data) => apiFetch(`${API_BASE_URL}/blog`, { method: 'POST', body: JSON.stringify(data) }),
   update: (id, data) => apiFetch(`${API_BASE_URL}/blog/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id) => apiFetch(`${API_BASE_URL}/blog/${id}`, { method: 'DELETE' }),
 };
 
-// Services
 export const serviceAPI = {
   getAll: (params = '') => apiFetch(`${API_BASE_URL}/services${params}`),
+  getAdminAll: (params = '') => apiFetch(`${API_BASE_URL}/services/admin/all${params}`),
   getBySlug: (slug) => apiFetch(`${API_BASE_URL}/services/${slug}`),
   create: (data) => apiFetch(`${API_BASE_URL}/services`, { method: 'POST', body: JSON.stringify(data) }),
   update: (id, data) => apiFetch(`${API_BASE_URL}/services/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id) => apiFetch(`${API_BASE_URL}/services/${id}`, { method: 'DELETE' }),
 };
 
-// Team
 export const teamAPI = {
   getAll: (params = '') => apiFetch(`${API_BASE_URL}/team${params}`),
+  getAdminAll: (params = '') => apiFetch(`${API_BASE_URL}/team/admin/all${params}`),
   getById: (id) => apiFetch(`${API_BASE_URL}/team/${id}`),
   create: (data) => apiFetch(`${API_BASE_URL}/team`, { method: 'POST', body: JSON.stringify(data) }),
   update: (id, data) => apiFetch(`${API_BASE_URL}/team/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id) => apiFetch(`${API_BASE_URL}/team/${id}`, { method: 'DELETE' }),
 };
 
-// Contact
 export const contactAPI = {
   getAll: (params = '') => apiFetch(`${API_BASE_URL}/contact${params}`),
   getById: (id) => apiFetch(`${API_BASE_URL}/contact/${id}`),
   markAsRead: (id) => apiFetch(`${API_BASE_URL}/contact/${id}/read`, { method: 'PUT' }),
-  reply: (id, replyMessage) => apiFetch(`${API_BASE_URL}/contact/${id}/reply`, { method: 'PUT', body: JSON.stringify({ replyMessage }) }),
+  reply: (id, replyMessage) => apiFetch(`${API_BASE_URL}/contact/${id}/reply`, {
+    method: 'PUT', body: JSON.stringify({ replyMessage }),
+  }),
   delete: (id) => apiFetch(`${API_BASE_URL}/contact/${id}`, { method: 'DELETE' }),
 };
 
-// Newsletter
 export const newsletterAPI = {
   getSubscribers: () => apiFetch(`${API_BASE_URL}/newsletter/subscribers`),
 };
 
-// Partners
 export const partnerAPI = {
-  getAll: () => apiFetch(`${API_BASE_URL}/partners`),
+  getAll: (params = '') => apiFetch(`${API_BASE_URL}/partners${params}`),
+  getAdminAll: (params = '') => apiFetch(`${API_BASE_URL}/partners/admin/all${params}`),
   create: (data) => apiFetch(`${API_BASE_URL}/partners`, { method: 'POST', body: JSON.stringify(data) }),
   update: (id, data) => apiFetch(`${API_BASE_URL}/partners/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id) => apiFetch(`${API_BASE_URL}/partners/${id}`, { method: 'DELETE' }),
 };
 
-// ESG
 export const esgAPI = {
   getAll: (params = '') => apiFetch(`${API_BASE_URL}/esg${params}`),
+  getAdminAll: (params = '') => apiFetch(`${API_BASE_URL}/esg/admin/all${params}`),
   create: (data) => apiFetch(`${API_BASE_URL}/esg`, { method: 'POST', body: JSON.stringify(data) }),
   update: (id, data) => apiFetch(`${API_BASE_URL}/esg/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id) => apiFetch(`${API_BASE_URL}/esg/${id}`, { method: 'DELETE' }),
 };
 
-// Jobs
 export const jobAPI = {
   getAll: (params = '') => apiFetch(`${API_BASE_URL}/jobs${params}`),
+  getAdminAll: (params = '') => apiFetch(`${API_BASE_URL}/jobs/admin/all${params}`),
   create: (data) => apiFetch(`${API_BASE_URL}/jobs`, { method: 'POST', body: JSON.stringify(data) }),
   update: (id, data) => apiFetch(`${API_BASE_URL}/jobs/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id) => apiFetch(`${API_BASE_URL}/jobs/${id}`, { method: 'DELETE' }),
 };
 
-// Job applications — the status pipeline behind the Careers page's
-// application form
 export const jobApplicationAPI = {
   getAll: (params = '') => apiFetch(`${API_BASE_URL}/jobs/applications${params}`),
   getForJob: (jobId) => apiFetch(`${API_BASE_URL}/jobs/${jobId}/applications`),
-  updateStatus: (id, status, notes) => apiFetch(`${API_BASE_URL}/jobs/applications/${id}`, { method: 'PUT', body: JSON.stringify({ status, notes }) }),
+  updateStatus: (id, status, notes) => apiFetch(`${API_BASE_URL}/jobs/applications/${id}`, {
+    method: 'PUT', body: JSON.stringify({ status, notes }),
+  }),
   delete: (id) => apiFetch(`${API_BASE_URL}/jobs/applications/${id}`, { method: 'DELETE' }),
 };
 
-// Events + RSVPs
 export const eventAPI = {
   getAll: (params = '') => apiFetch(`${API_BASE_URL}/events${params}`),
+  getAdminAll: (params = '') => apiFetch(`${API_BASE_URL}/events/admin/all${params}`),
   create: (data) => apiFetch(`${API_BASE_URL}/events`, { method: 'POST', body: JSON.stringify(data) }),
   update: (id, data) => apiFetch(`${API_BASE_URL}/events/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id) => apiFetch(`${API_BASE_URL}/events/${id}`, { method: 'DELETE' }),
@@ -219,8 +281,10 @@ export const eventAPI = {
   removeRsvp: (eventId, rsvpId) => apiFetch(`${API_BASE_URL}/events/${eventId}/rsvps/${rsvpId}`, { method: 'DELETE' }),
 };
 
-// Newsletter issues — the actual sent-content archive, distinct from
-// newsletterAPI above (which only manages the subscriber list)
+export const newsletterSubscriberAPI = {
+  getAll: (includeUnsubscribed = true) => apiFetch(`${API_BASE_URL}/newsletter/subscribers?includeUnsubscribed=${includeUnsubscribed}`),
+};
+
 export const newsletterIssueAPI = {
   getAll: () => apiFetch(`${API_BASE_URL}/newsletter/issues`),
   create: (data) => apiFetch(`${API_BASE_URL}/newsletter/issues`, { method: 'POST', body: JSON.stringify(data) }),
@@ -229,7 +293,6 @@ export const newsletterIssueAPI = {
   send: (id) => apiFetch(`${API_BASE_URL}/newsletter/issues/${id}/send`, { method: 'POST' }),
 };
 
-// Analytics
 export const analyticsAPI = {
   getDashboard: () => apiFetch(`${API_BASE_URL}/analytics/dashboard`),
   getActivity: (limit = 10) => apiFetch(`${API_BASE_URL}/analytics/activity?limit=${limit}`),
@@ -237,28 +300,33 @@ export const analyticsAPI = {
   getGrowth: () => apiFetch(`${API_BASE_URL}/analytics/growth`),
 };
 
-// Settings
 export const settingsAPI = {
   getAll: () => apiFetch(`${API_BASE_URL}/settings`),
   getPublic: () => apiFetch(`${API_BASE_URL}/settings/public`),
-  update: (key, value, group) => apiFetch(`${API_BASE_URL}/settings`, { method: 'POST', body: JSON.stringify({ key, value, group }) }),
-  bulkUpdate: (settings) => apiFetch(`${API_BASE_URL}/settings/bulk`, { method: 'PUT', body: JSON.stringify({ settings }) }),
+  update: (key, value, group) => apiFetch(`${API_BASE_URL}/settings`, {
+    method: 'POST', body: JSON.stringify({ key, value, group }),
+  }),
+  bulkUpdate: (settings) => apiFetch(`${API_BASE_URL}/settings/bulk`, {
+    method: 'PUT', body: JSON.stringify({ settings }),
+  }),
 };
 
-// Upload
 export const uploadAPI = {
-  uploadImage: (file) => {
+  uploadImage: async (file) => {
+    if (!csrfToken) await initializeCsrf();
     const formData = new FormData();
     formData.append('image', file);
-    // FormData uploads deliberately bypass apiFetch's JSON Content-Type
-    // header (the browser needs to set its own multipart boundary), but
-    // still need credentials + CSRF like every other mutating request.
-    return fetch(`${API_BASE_URL}/upload`, {
+
+    const response = await fetch(`${API_BASE_URL}/upload`, {
       method: 'POST',
       credentials: 'include',
-      headers: { 'X-CSRF-Token': getCsrfToken() },
+      headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
       body: formData,
-    }).then(handleResponse);
+    });
+
+    return handleResponse(response);
   },
-  deleteImage: (publicId) => apiFetch(`${API_BASE_URL}/upload`, { method: 'DELETE', body: JSON.stringify({ publicId }) }),
+  deleteImage: (publicId) => apiFetch(`${API_BASE_URL}/upload`, {
+    method: 'DELETE', body: JSON.stringify({ publicId }),
+  }),
 };

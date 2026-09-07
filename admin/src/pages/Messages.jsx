@@ -44,11 +44,18 @@ export default function Messages({ addToast }) {
   const handleMarkRead = async (msg) => {
     try {
       await contactAPI.markAsRead(msg._id);
-      addToast?.('Marked as read', 'success');
-      loadMessages();
+      setMessages((prev) => prev.map((item) => (
+        item._id === msg._id ? { ...item, isRead: true } : item
+      )));
+      setSelected((prev) => prev?._id === msg._id ? { ...prev, isRead: true } : prev);
     } catch (err) {
-      addToast?.(err.message, 'error');
+      addToast?.('Message opened, but it could not be marked as read.', 'error');
     }
+  };
+
+  const handleView = (msg) => {
+    setSelected(msg);
+    if (!msg.isRead) handleMarkRead(msg);
   };
 
   const handleDelete = async (msg) => {
@@ -95,7 +102,7 @@ export default function Messages({ addToast }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
           <DataTable data={filtered} columns={columns}
-            onView={(row) => { setSelected(row); if (!row.isRead) handleMarkRead(row); }}
+            onView={handleView}
             onDelete={handleDelete} loading={loading} pageSize={10} />
         </div>
         <AnimatePresence>

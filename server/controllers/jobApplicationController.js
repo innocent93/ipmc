@@ -1,5 +1,6 @@
 const jobApplicationService = require('../services/jobApplicationService');
 const { sendEmailInBackground } = require('../utils/emailService');
+const emailTemplates = require('../utils/emailTemplates');
 
 exports.applyToJob = async (req, res) => {
   try {

@@ -16,7 +16,7 @@ export default function Blog() {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    api.getPosts()
+    api.getPosts('?limit=100')
       .then(res => setPosts(res && res.length > 0 ? res : FALLBACK_POSTS))
       // Backend unreachable (e.g. static-only deploy) \u2014 fall back to
       // built-in content instead of leaving the page empty.
@@ -62,7 +62,7 @@ export default function Blog() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {pagePosts.length > 0 ? pagePosts.map((post, i) => (
-                <motion.article key={post._id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
+                <motion.article key={post._id || post.id || post.slug} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
                   <Link to={`/blog/${post.slug}`} className="group block">
                     <div className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 border border-gray-100">
                       <div className="relative h-56 overflow-hidden">

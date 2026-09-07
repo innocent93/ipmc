@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { getAllJobs, getJobBySlug, createJob, updateJob, deleteJob } = require('../controllers/jobController');
+const { getAllJobs, getAllJobsAdmin, getJobBySlug, createJob, updateJob, deleteJob } = require('../controllers/jobController');
 const { applyToJob, getApplicationsForJob, getAllApplications, updateApplicationStatus, deleteApplication } = require('../controllers/jobApplicationController');
 const { authenticate, authorize } = require('../middleware/auth');
 const { validate, schemas } = require('../middleware/validation');
 const { contactLimiter } = require('../middleware/rateLimiter');
 
 router.get('/', getAllJobs);
+router.get('/admin/all', authenticate, authorize('admin', 'editor'), getAllJobsAdmin);
 router.get('/applications', authenticate, authorize('admin', 'editor'), getAllApplications);
 router.get('/:slug', getJobBySlug);
 router.post('/', authenticate, authorize('admin', 'editor'), validate(schemas.job), createJob);

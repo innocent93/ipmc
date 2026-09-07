@@ -11,6 +11,8 @@ const validPost = {
   slug: 'test-post',
   excerpt: 'A short excerpt that is long enough to pass validation.',
   content: 'Full body content for the test post, long enough to be realistic.',
+  coverImage: 'https://example.com/cover.jpg',
+  author: { name: 'Test Admin', role: 'Contributor', avatar: '' },
   category: 'insights',
 };
 

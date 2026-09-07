@@ -25,7 +25,7 @@ export default function ServiceManager({ addToast }) {
   const loadServices = async () => {
     setLoading(true);
     try {
-      const res = await serviceAPI.getAll('?limit=100');
+      const res = await serviceAPI.getAdminAll('?limit=100');
       setServices(res.data || []);
     } catch (err) {
       addToast?.(err.message, 'error');

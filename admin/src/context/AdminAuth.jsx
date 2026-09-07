@@ -15,6 +15,7 @@ export function AdminProvider({ children }) {
     // know if a session exists is to ask the server.
     const initAuth = async () => {
       try {
+        await authAPI.getCsrf();
         const res = await authAPI.getMe();
         setUser(res.data);
       } catch {

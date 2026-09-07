@@ -1,6 +1,15 @@
 const jobService = require('../services/jobService');
 const activityLogService = require('../services/activityLogService');
 
+exports.getAllJobsAdmin = async (req, res) => {
+  try {
+    const result = await jobService.getAllJobsAdmin(req.query);
+    res.status(200).json({ success: true, ...(Array.isArray(result) ? { data: result } : result) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 exports.getAllJobs = async (req, res) => {
   try {
     const result = await jobService.getAllJobs(req.query);

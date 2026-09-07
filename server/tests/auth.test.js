@@ -83,7 +83,7 @@ describe('Auth: refresh-token rotation', () => {
 
     const res = await agent.post('/api/auth/refresh');
     expect(res.status).toBe(200);
-    expect(res.body.token).toBeDefined();
+    expect(res.body.csrfToken).toBeDefined();
 
     // The renewed session should still work for an authenticated call.
     const meRes = await agent.get('/api/auth/me');

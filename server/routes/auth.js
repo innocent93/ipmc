@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, logout, refresh, getMe, updateProfile, changePassword, forgotPassword, resetPassword, listSessions, revokeSession } = require('../controllers/authController');
+const { getCsrfToken, register, login, logout, refresh, getMe, updateProfile, changePassword, forgotPassword, resetPassword, listSessions, revokeSession } = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimiter');
 const { validate, schemas } = require('../middleware/validation');
+
+router.get('/csrf', getCsrfToken);
 
 router.post('/register', authLimiter, validate(schemas.register), register);
 router.post('/login', authLimiter, validate(schemas.login), login);

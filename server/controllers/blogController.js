@@ -10,6 +10,15 @@ exports.getAllPosts = async (req, res) => {
   }
 };
 
+exports.getAllPostsAdmin = async (req, res) => {
+  try {
+    const result = await blogService.getAllPostsAdmin(req.query);
+    res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 exports.getPostBySlug = async (req, res) => {
   try {
     const post = await blogService.getPostBySlug(req.params.slug);

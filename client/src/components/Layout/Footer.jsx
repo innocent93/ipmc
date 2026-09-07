@@ -1,7 +1,10 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Phone, Mail, Clock, ArrowUp } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, ArrowUp, Loader2, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { getServiceBySlug } from '../../data/services';
+import { useState } from 'react';
+import { toast } from 'react-toastify';
+import { api } from '../../utils/api';
 
 const quickLinks = [
   { name: 'Home', path: '/' },
@@ -27,6 +30,26 @@ const otherLinks = [
 ];
 
 export default function Footer() {
+  const [email, setEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [subscribed, setSubscribed] = useState(false);
+
+  const handleSubscribe = async (e) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setSubmitting(true);
+    try {
+      await api.subscribe(email.trim(), 'footer');
+      setSubscribed(true);
+      setEmail('');
+      toast.success('You are subscribed to IPMC Insights.');
+    } catch (err) {
+      toast.error(err.message || 'Could not subscribe. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -49,10 +72,12 @@ export default function Footer() {
               and consultancy services across project monitoring, QHSE, ESG, SDGs, and financial audits.
             </p>
             <div className="flex gap-3">
-              {['facebook', 'twitter', 'instagram', 'linkedin', 'youtube'].map((social) => (
+              {[
+                ['Facebook', '#'], ['X', '#'], ['Instagram', '#'], ['LinkedIn', '#'], ['YouTube', '#']
+              ].map(([social, href]) => (
                 <a 
                   key={social}
-                  href="#" 
+                  href={href} 
                   className="w-10 h-10 rounded-lg bg-primary-900 hover:bg-primary-600 flex items-center justify-center transition-colors duration-300 text-xs font-bold uppercase"
                 >
                   {social[0]}
@@ -89,6 +114,30 @@ export default function Footer() {
                 </li>
               ))}
             </ul>
+          </div>
+
+          {/* Newsletter */}
+          <div className="lg:col-span-1">
+            <h3 className="font-display font-semibold text-lg mb-4 text-accent-400">Stay Informed</h3>
+            <p className="text-primary-300 text-sm leading-relaxed mb-5">
+              Subscribe to IPMC Insights for practical updates on project monitoring, ESG, sustainability and industry developments.
+            </p>
+            {subscribed ? (
+              <div className="rounded-xl bg-primary-900 border border-primary-800 p-4 flex gap-3 items-start">
+                <CheckCircle2 size={20} className="text-accent-400 shrink-0 mt-0.5" />
+                <div><p className="text-white font-semibold text-sm">You're subscribed</p><p className="text-primary-300 text-xs mt-1">Check your inbox for a welcome email.</p></div>
+              </div>
+            ) : (
+              <form onSubmit={handleSubscribe} className="space-y-3">
+                <label htmlFor="footer-newsletter-email" className="sr-only">Email address</label>
+                <input id="footer-newsletter-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Your email address" autoComplete="email"
+                  className="w-full px-4 py-3 rounded-lg bg-white/10 border border-primary-700 text-white placeholder:text-primary-400 focus:outline-none focus:ring-2 focus:ring-accent-400" />
+                <button type="submit" disabled={submitting} className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-accent-500 hover:bg-accent-400 text-primary-950 font-semibold transition-colors disabled:opacity-60">
+                  {submitting ? <Loader2 size={17} className="animate-spin" /> : 'Subscribe to IPMC Insights'}
+                </button>
+                <p className="text-primary-500 text-[11px] leading-relaxed">By subscribing, you agree to receive IPMC email updates. You can unsubscribe anytime.</p>
+              </form>
+            )}
           </div>
 
           {/* Contact Info - REAL ADDRESSES FROM SITE */}

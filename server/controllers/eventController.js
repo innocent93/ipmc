@@ -1,6 +1,15 @@
 const eventService = require('../services/eventService');
 const activityLogService = require('../services/activityLogService');
 
+exports.getAllEventsAdmin = async (req, res) => {
+  try {
+    const result = await eventService.getAllEventsAdmin(req.query);
+    res.status(200).json({ success: true, ...(Array.isArray(result) ? { data: result } : result) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 exports.getAllEvents = async (req, res) => {
   try {
     const result = await eventService.getAllEvents(req.query);

@@ -25,7 +25,7 @@ export default function EventManager({ addToast }) {
   const loadEvents = async () => {
     setLoading(true);
     try {
-      const res = await eventAPI.getAll('?limit=100');
+      const res = await eventAPI.getAdminAll('?limit=100');
       setEvents(res.data || []);
     } catch (err) {
       addToast?.(err.message, 'error');

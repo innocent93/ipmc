@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, FileText, Briefcase, Users, MessageSquare,
   Settings, LogOut, Menu, X, ChevronRight, Bell, Monitor,
-  CalendarDays, ClipboardList, Send
+  CalendarDays, ClipboardList, Send, Building2, Handshake, Leaf
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminAuth';
 
@@ -14,8 +14,12 @@ const navItems = [
   { path: '/admin/services', label: 'Services', icon: Briefcase },
   { path: '/admin/team', label: 'Team', icon: Users },
   { path: '/admin/events', label: 'Events', icon: CalendarDays },
+  { path: '/admin/jobs', label: 'Jobs', icon: Building2 },
+  { path: '/admin/partners', label: 'Partners', icon: Handshake },
+  { path: '/admin/esg', label: 'ESG', icon: Leaf },
   { path: '/admin/applications', label: 'Job Applications', icon: ClipboardList },
   { path: '/admin/newsletter-issues', label: 'Newsletter Issues', icon: Send },
+  { path: '/admin/newsletter-subscribers', label: 'Newsletter Subscribers', icon: Users },
   { path: '/admin/messages', label: 'Messages', icon: MessageSquare },
   { path: '/admin/settings', label: 'Settings', icon: Settings },
   { path: '/admin/sessions', label: 'Active Sessions', icon: Monitor },
