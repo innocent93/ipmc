@@ -24,7 +24,7 @@ exports.login = async (req, res) => {
     // device doesn't sign the first one out.
     setAuthCookies(res, result.token);
     setRefreshCookie(res, result.refreshToken);
-    res.status(200).json({ success: true, token: result.token, user: result.user });
+    res.status(200).json({ success: true, user: result.user });
   } catch (error) {
     res.status(401).json({ success: false, message: error.message });
   }
