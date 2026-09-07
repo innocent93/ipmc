@@ -3,8 +3,8 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, FileText, Briefcase, Users, MessageSquare,
-  Settings, LogOut, Menu, X, ChevronRight, Bell, Monitor,
-  CalendarDays, ClipboardList, Send, Building2, Handshake, Leaf
+  Settings, LogOut, Menu, X, Bell, Monitor,
+  CalendarDays, ClipboardList, Send, Building2, Leaf
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminAuth';
 
@@ -15,7 +15,7 @@ const navItems = [
   { path: '/admin/team', label: 'Team', icon: Users },
   { path: '/admin/events', label: 'Events', icon: CalendarDays },
   { path: '/admin/jobs', label: 'Jobs', icon: Building2 },
-  { path: '/admin/partners', label: 'Partners', icon: Handshake },
+  { path: '/admin/partners', label: 'Partners', icon: Users },
   { path: '/admin/esg', label: 'ESG', icon: Leaf },
   { path: '/admin/applications', label: 'Job Applications', icon: ClipboardList },
   { path: '/admin/newsletter-issues', label: 'Newsletter Issues', icon: Send },
